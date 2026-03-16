@@ -10,6 +10,8 @@ import {
   Animated,
   Easing,
   Dimensions,
+  Alert,
+  Linking,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -25,6 +27,9 @@ import Avatar from '@/components/Avatar';
 import Card from '@/components/Card';
 import { api } from '@/constants/api';
 import { supabase } from '@/lib/supabase';
+import { persistActiveSession } from '@/hooks/useBackgroundLocation';
+import { startBackgroundTracking, registerHomeGeofence } from '@/hooks/useBackgroundLocation';
+import { scheduleLocalNotification } from '@/hooks/useNotifications';
 
 const ORB_SIZE = 140;
 const _SCREEN_WIDTH = Dimensions.get('window').width;
@@ -75,12 +80,28 @@ export default function HomeScreen() {
 
   const [selectedEta, setSelectedEta] = useState(defaultEtaMinutes);
   const [showGuardianSheet, setShowGuardianSheet] = useState(false);
+  const [showSafetyBanner, setShowSafetyBanner] = useState(false);
   const haloAnim = useRef(new Animated.Value(0.12)).current;
   const haloScaleAnim = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
     setSelectedEta(defaultEtaMinutes);
   }, [defaultEtaMinutes]);
+
+  useEffect(() => {
+    AsyncStorage.getItem('safely_safety_banner_dismissed').then((val) => {
+      if (!val) setShowSafetyBanner(true);
+    }).catch(() => {});
+  }, []);
+
+  const dismissBanner = useCallback(async () => {
+    try {
+      await AsyncStorage.setItem('safely_safety_banner_dismissed', 'true');
+    } catch (e) {
+      console.log('HomeScreen: Error dismissing banner', e);
+    }
+    setShowSafetyBanner(false);
+  }, []);
 
   useEffect(() => {
     if (isInitialized && !hasOnboarded) {
@@ -273,34 +294,152 @@ export default function HomeScreen() {
     };
   }, [setCurrentCoords]);
 
-  const handleStartSafely = useCallback(() => {
-    setShowEtaModal(true);
-  }, []);
+  const handleStartSafely = useCallback(async () => {
+    if (!primaryGuardian) {
+      Alert.alert(
+        'Add a Guardian First',
+        'You need at least one guardian before activating Safely. Add someone who can look out for you.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Add Guardian', onPress: () => router.push('/(tabs)/guardian') },
+        ]
+      );
+      return;
+    }
 
-  const handleConfirmEta = useCallback(() => {
+    if (!homeAddress.coords || !homeAddress.label) {
+      Alert.alert(
+        'Set Your Home Address',
+        "Safely needs your home address to know when you've arrived safely.",
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Set Address', onPress: () => router.push('/(tabs)/settings') },
+        ]
+      );
+      return;
+    }
+
+    if (Platform.OS !== 'web') {
+      const { status } = await Location.getForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert(
+          'Location Access Required',
+          'Safely needs location access to protect you. Please enable it in Settings.',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Open Settings', onPress: () => Linking.openURL('app-settings:') },
+          ]
+        );
+        return;
+      }
+
+      try {
+        const Battery = await import('expo-battery');
+        const batteryLevel = await Battery.getBatteryLevelAsync();
+        if (batteryLevel >= 0 && batteryLevel < 0.20) {
+          Alert.alert(
+            'Low Battery Warning',
+            `Your battery is at ${Math.round(batteryLevel * 100)}%. Background location tracking may stop if your phone dies. Consider charging before activating Safely.`,
+            [
+              { text: 'Cancel' },
+              { text: 'Activate Anyway', onPress: () => setShowEtaModal(true) },
+            ]
+          );
+          return;
+        }
+      } catch (e) {
+        console.log('HomeScreen: Battery check failed, continuing', e);
+      }
+    }
+
+    setShowEtaModal(true);
+  }, [primaryGuardian, homeAddress, router]);
+
+  const handleConfirmEta = useCallback(async () => {
+    const etaDate = new Date(Date.now() + selectedEta * 60000);
+    if (etaDate.getTime() < Date.now()) {
+      Alert.alert(
+        'Invalid Time',
+        'Your expected arrival time has already passed. Please select a future time.',
+        [{ text: 'OK' }]
+      );
+      return;
+    }
+
     const eventName = connectedEvents[0]?.name ?? null;
     const sessionId = `session-${Date.now()}`;
     setActiveSessionId(sessionId);
     startSession(selectedEta, eventName);
     setShowEtaModal(false);
+
+    try {
+      await persistActiveSession({
+        sessionId,
+        userName: useSafelyStore.getState().userName,
+        guardianPhone: primaryGuardian?.phone ?? '',
+        guardianName: primaryGuardian?.name ?? '',
+        eta: etaDate.getTime(),
+        homeLatitude: homeAddress.coords.latitude,
+        homeLongitude: homeAddress.coords.longitude,
+        trackingStatus: 'active',
+      });
+    } catch (e) {
+      console.log('HomeScreen: persistActiveSession error', e);
+    }
+
+    try {
+      await startBackgroundTracking();
+    } catch (e) {
+      console.log('HomeScreen: startBackgroundTracking error', e);
+    }
+
+    try {
+      await registerHomeGeofence(
+        homeAddress.coords.latitude,
+        homeAddress.coords.longitude
+      );
+    } catch (e) {
+      console.log('HomeScreen: registerHomeGeofence error', e);
+    }
+
+    try {
+      const msUntilLate = etaDate.getTime() - Date.now() + (15 * 60 * 1000);
+      const lateNotifId = await scheduleLocalNotification(
+        `Are you okay, ${useSafelyStore.getState().userName}?`,
+        "You haven't made it home yet. Tap to check in.",
+        Math.floor(msUntilLate / 1000),
+        'LATE_CHECKIN'
+      );
+      if (lateNotifId) {
+        await AsyncStorage.setItem('safely_late_notif_id', lateNotifId);
+      }
+    } catch (e) {
+      console.log('HomeScreen: scheduleLocalNotification error', e);
+    }
+
     try {
       void api.startSession({
         userId,
         sessionId,
         guardianPhone: primaryGuardian?.phone,
         guardianName: primaryGuardian?.name,
-        userName: '',
+        userName: useSafelyStore.getState().userName,
         eventName,
         etaMinutes: selectedEta,
         homeCoords: homeAddress.coords,
       });
     } catch (e) {
       console.log('HomeScreen: API startSession error', e);
+      Alert.alert(
+        'Connection Issue',
+        "We couldn't notify your guardian right now due to a network issue. Your journey is still being tracked locally. Please check your connection.",
+        [{ text: 'OK' }]
+      );
     }
     setTimeout(() => {
       router.push('/tracking/active');
     }, 50);
-  }, [selectedEta, connectedEvents, startSession, router, userId, setActiveSessionId, primaryGuardian, homeAddress.coords]);
+  }, [selectedEta, connectedEvents, startSession, router, userId, setActiveSessionId, primaryGuardian, homeAddress]);
 
   const mapRegion = currentCoords ? {
     latitude: currentCoords.latitude,
@@ -349,6 +488,20 @@ export default function HomeScreen() {
             <Text style={styles.headerTitle}>Safely</Text>
           </View>
         </View>
+
+        {showSafetyBanner && (
+          <View style={styles.safetyBannerWrapper}>
+            <View style={styles.safetyBanner}>
+              <Text style={styles.safetyBannerTitle}>Important Safety Notice</Text>
+              <Text style={styles.safetyBannerText}>
+                Safely is not an emergency service. Always call 911 in a life-threatening emergency. Notification delivery is not guaranteed.
+              </Text>
+              <TouchableOpacity onPress={dismissBanner} style={styles.safetyBannerBtn}>
+                <Text style={styles.safetyBannerBtnText}>Got it</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
 
         {primaryGuardian && (
           <View style={styles.guardianCardWrapper}>
@@ -869,5 +1022,38 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700' as const,
     color: Colors.textPrimary,
+  },
+  safetyBannerWrapper: {
+    paddingHorizontal: 16,
+    marginTop: 8,
+  },
+  safetyBanner: {
+    backgroundColor: 'rgba(255, 176, 32, 0.10)',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 176, 32, 0.30)',
+    padding: 14,
+  },
+  safetyBannerTitle: {
+    fontFamily: fonts.bodySemiBold,
+    fontSize: 12,
+    fontWeight: '600' as const,
+    color: '#C68000',
+    marginBottom: 4,
+  },
+  safetyBannerText: {
+    fontFamily: fonts.body,
+    fontSize: 12,
+    color: '#8A6000',
+    lineHeight: 18,
+  },
+  safetyBannerBtn: {
+    marginTop: 8,
+  },
+  safetyBannerBtnText: {
+    fontFamily: fonts.bodySemiBold,
+    fontSize: 12,
+    fontWeight: '600' as const,
+    color: '#C68000',
   },
 });

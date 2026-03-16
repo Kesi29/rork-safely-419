@@ -231,6 +231,10 @@ export default function GuardianScreen() {
               <Text style={styles.saveButtonText}>SAVE GUARDIAN</Text>
             </TouchableOpacity>
 
+            <Text style={styles.consentText}>
+              By adding this guardian you confirm they have consented to receive SMS messages from Safely. Standard messaging rates may apply to your guardian.
+            </Text>
+
             <TouchableOpacity style={styles.cancelBtn} onPress={() => setShowModal(false)}>
               <Text style={styles.cancelBtnText}>Cancel</Text>
             </TouchableOpacity>
@@ -469,5 +473,15 @@ const styles = StyleSheet.create({
   cancelBtnText: {
     fontSize: 15,
     color: Colors.textSecondary,
+  },
+  consentText: {
+    fontFamily: 'DMSans_400Regular',
+    fontSize: 12,
+    color: '#BBBBBB',
+    textAlign: 'center',
+    lineHeight: 18,
+    marginTop: 12,
+    marginBottom: 4,
+    paddingHorizontal: 16,
   },
 });

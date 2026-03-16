@@ -102,7 +102,7 @@ export default function VerifyScreen() {
         console.log('VerifyScreen: Verified! User ID:', data.user.id);
         setUserId(data.user.id);
         setUserPhone(params.phone);
-        router.push('/onboarding/name');
+        router.push('/onboarding/location-permission');
       } else {
         setError('Verification failed. Please try again.');
         shakeBoxes();

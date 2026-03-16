@@ -11,13 +11,15 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { MapPin, Play, Clock, AlertTriangle, Home as HomeIcon, Edit2, Plus } from 'lucide-react-native';
+import { MapPin, Play, Clock, AlertTriangle, Home as HomeIcon, Edit2, Plus, FileText, Shield, AlertCircle, Code, ChevronRight, Info, Trash2 } from 'lucide-react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import Colors from '@/constants/colors';
 import { fonts } from '@/constants/typography';
 import { useSafelyStore } from '@/store';
 import Card from '@/components/Card';
 import Avatar from '@/components/Avatar';
 import AddressSearch from '@/components/AddressSearch';
+import { supabase } from '@/lib/supabase';
 
 interface AddressResult {
   label: string;
@@ -48,6 +50,7 @@ export default function SettingsScreen() {
     addEvent,
     startSession,
     setTrackingStatus,
+    userId,
   } = useSafelyStore();
 
   const [editName, setEditName] = useState(userName);
@@ -260,6 +263,75 @@ export default function SettingsScreen() {
             <Text style={styles.addEventText}>Add Event</Text>
           </TouchableOpacity>
         </Card>
+
+        <Text style={styles.sectionLabel}>Legal</Text>
+        <View style={styles.legalSection}>
+          <TouchableOpacity style={styles.legalRow} onPress={() => router.push('/legal/terms')} activeOpacity={0.7}>
+            <View style={styles.legalIconCircle}><FileText size={16} color={Colors.green} /></View>
+            <Text style={styles.legalRowText}>Terms of Service</Text>
+            <ChevronRight size={16} color={Colors.textMuted} />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.legalRow} onPress={() => router.push('/legal/privacy')} activeOpacity={0.7}>
+            <View style={styles.legalIconCircle}><Shield size={16} color={Colors.green} /></View>
+            <Text style={styles.legalRowText}>Privacy Policy</Text>
+            <ChevronRight size={16} color={Colors.textMuted} />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.legalRow} onPress={() => router.push('/legal/disclaimer')} activeOpacity={0.7}>
+            <View style={styles.legalIconCircle}><AlertCircle size={16} color={Colors.green} /></View>
+            <Text style={styles.legalRowText}>Safety Disclaimer</Text>
+            <ChevronRight size={16} color={Colors.textMuted} />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.legalRow} onPress={() => router.push('/legal/licenses')} activeOpacity={0.7}>
+            <View style={styles.legalIconCircle}><Code size={16} color={Colors.green} /></View>
+            <Text style={styles.legalRowText}>Open Source Licenses</Text>
+            <ChevronRight size={16} color={Colors.textMuted} />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.legalRow} onPress={() => router.push('/legal/about')} activeOpacity={0.7}>
+            <View style={styles.legalIconCircle}><Info size={16} color={Colors.green} /></View>
+            <Text style={styles.legalRowText}>About Safely</Text>
+            <ChevronRight size={16} color={Colors.textMuted} />
+          </TouchableOpacity>
+        </View>
+
+        <Text style={styles.sectionLabel}>Account</Text>
+        <TouchableOpacity
+          style={styles.deleteRow}
+          onPress={() => {
+            Alert.alert(
+              'Delete Account',
+              'This will permanently delete your account, all guardians, and all session history. This cannot be undone.',
+              [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                  text: 'Delete My Account',
+                  style: 'destructive',
+                  onPress: async () => {
+                    try {
+                      if (userId) {
+                        await supabase.from('guardians').delete().eq('user_id', userId);
+                        await supabase.from('sessions').delete().eq('user_id', userId);
+                        await supabase.from('users').delete().eq('id', userId);
+                      }
+                      await supabase.auth.signOut();
+                      await AsyncStorage.clear();
+                      router.replace('/onboarding/welcome');
+                    } catch (e) {
+                      console.log('Settings: Delete account error', e);
+                      Alert.alert('Error', 'Failed to delete account. Please contact privacy@getsafely.app');
+                    }
+                  },
+                },
+              ]
+            );
+          }}
+          activeOpacity={0.7}
+        >
+          <View style={[styles.legalIconCircle, { backgroundColor: Colors.redLight }]}>
+            <Trash2 size={16} color={Colors.red} />
+          </View>
+          <Text style={[styles.legalRowText, { color: Colors.red }]}>Delete My Account</Text>
+          <ChevronRight size={16} color={Colors.red} />
+        </TouchableOpacity>
 
         <Text style={styles.sectionLabel}>Simulate</Text>
         <View style={styles.simSection}>
@@ -572,6 +644,47 @@ const styles = StyleSheet.create({
   },
   bottomSpacer: {
     height: 40,
+  },
+  legalSection: {
+    backgroundColor: Colors.background,
+    borderRadius: 14,
+    borderWidth: 0.5,
+    borderColor: Colors.border,
+    overflow: 'hidden',
+  },
+  legalRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 14,
+    borderBottomWidth: 0.5,
+    borderBottomColor: Colors.border,
+  },
+  legalIconCircle: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: Colors.greenLight,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  legalRowText: {
+    flex: 1,
+    fontSize: 15,
+    fontWeight: '500' as const,
+    color: Colors.textPrimary,
+  },
+  deleteRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: Colors.background,
+    borderRadius: 14,
+    borderWidth: 0.5,
+    borderColor: Colors.border,
+    paddingHorizontal: 14,
+    paddingVertical: 14,
   },
   modalOverlay: {
     flex: 1,

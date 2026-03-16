@@ -21,6 +21,9 @@ import SOSButton from '@/components/SOSButton';
 import GuardianToast from '@/components/GuardianToast';
 import { sendGuardianSMS, formatGuardianMessage } from '@/utils/sms';
 import { api } from '@/constants/api';
+import { stopAllTracking, clearActiveSession } from '@/hooks/useBackgroundLocation';
+import { cancelNotification } from '@/hooks/useNotifications';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 function haversineDistance(a: {latitude: number; longitude: number}, b: {latitude: number; longitude: number}): number {
   const R = 6371000;
@@ -288,10 +291,25 @@ export default function ActiveTrackingScreen() {
     return () => clearInterval(interval);
   }, [session.eta, session.etaMinutes, trackingStatus, setTrackingStatus, router]);
 
+  const cleanupTracking = useCallback(async () => {
+    try {
+      await stopAllTracking();
+      await clearActiveSession();
+      const lateNotifId = await AsyncStorage.getItem('safely_late_notif_id');
+      if (lateNotifId) {
+        await cancelNotification(lateNotifId);
+        await AsyncStorage.removeItem('safely_late_notif_id');
+      }
+    } catch (e) {
+      console.log('ActiveTracking: cleanupTracking error', e);
+    }
+  }, []);
+
   const handleImHome = useCallback(() => {
     setTrackingStatus('arrived');
     setToastMessage(`${userName} arrived home safely at ${new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })} 🏠`);
     setShowToast(true);
+    void cleanupTracking();
     try {
       void api.arrive({
         userId,
@@ -306,7 +324,7 @@ export default function ActiveTrackingScreen() {
     setTimeout(() => {
       router.replace('/tracking/arrived');
     }, 500);
-  }, [setTrackingStatus, userName, router, userId, activeSessionId, primaryGuardian]);
+  }, [setTrackingStatus, userName, router, userId, activeSessionId, primaryGuardian, cleanupTracking]);
 
   const handleStayingOver = useCallback(() => {
     Alert.alert(
@@ -320,6 +338,7 @@ export default function ActiveTrackingScreen() {
             setTrackingStatus('arrived');
             setToastMessage(`${userName} is staying over safely ✓`);
             setShowToast(true);
+            void cleanupTracking();
             try {
               void api.arrive({
                 userId,
@@ -339,7 +358,7 @@ export default function ActiveTrackingScreen() {
         },
       ]
     );
-  }, [primaryGuardian, setTrackingStatus, userName, router, userId, activeSessionId]);
+  }, [primaryGuardian, setTrackingStatus, userName, router, userId, activeSessionId, cleanupTracking]);
 
   const handleClose = useCallback(() => {
     Alert.alert(
@@ -351,13 +370,14 @@ export default function ActiveTrackingScreen() {
           text: 'Cancel',
           style: 'destructive',
           onPress: () => {
+            void cleanupTracking();
             endSession();
             router.replace('/(tabs)/(home)');
           },
         },
       ]
     );
-  }, [primaryGuardian, endSession, router]);
+  }, [primaryGuardian, endSession, router, cleanupTracking]);
 
   const handleSOS = useCallback(() => {
     router.push('/sos-modal');

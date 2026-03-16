@@ -8,6 +8,7 @@
     "scheme": "rork-app",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
+    "description": "Get home safe. Safely shares your location with a trusted guardian until you arrive home, with one-tap SOS emergency alerts.",
     "splash": {
       "image": "./assets/images/splash-icon.png",
       "resizeMode": "contain",
@@ -15,7 +16,16 @@
     },
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "app.rork.zv2rxyq8ar304degomi66"
+      "bundleIdentifier": "app.rork.zv2rxyq8ar304degomi66",
+      "buildNumber": "1",
+      "requireFullScreen": true,
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "Safely tracks your location to notify your guardian when you arrive home safely.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "Safely needs background location to keep protecting you after you leave the event.",
+        "NSLocationAlwaysUsageDescription": "Safely tracks your location in the background so your guardian knows you're safe.",
+        "UIBackgroundModes": ["location", "fetch", "remote-notification"],
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -35,7 +45,23 @@
         }
       ],
       "expo-font",
-      "expo-web-browser"
+      "expo-web-browser",
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Safely needs background location to keep protecting you after you leave the event.",
+          "locationAlwaysPermission": "Safely tracks your location in the background so your guardian knows you're safe.",
+          "locationWhenInUsePermission": "Safely tracks your location to notify your guardian when you arrive home safely.",
+          "isIosBackgroundLocationEnabled": true,
+          "isAndroidBackgroundLocationEnabled": true
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "color": "#18A57D"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true

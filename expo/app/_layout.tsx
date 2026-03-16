@@ -7,6 +7,8 @@ import { useFonts } from "expo-font";
 import { useSafelyStore } from "@/store";
 import { trpc, trpcClient } from "@/lib/trpc";
 import { supabase } from "@/lib/supabase";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { setupNotificationCategories } from "@/hooks/useNotifications";
 
 SplashScreen.preventAutoHideAsync().catch(() => {
   console.log('SplashScreen.preventAutoHideAsync failed');
@@ -20,6 +22,7 @@ function RootLayoutNav() {
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen name="onboarding" options={{ headerShown: false, gestureEnabled: false }} />
       <Stack.Screen name="tracking" options={{ headerShown: false }} />
+      <Stack.Screen name="legal" options={{ headerShown: false }} />
       <Stack.Screen name="sos-modal" options={{ presentation: 'transparentModal', animation: 'fade', headerShown: false }} />
     </Stack>
   );
@@ -51,6 +54,10 @@ export default function RootLayout() {
   useEffect(() => {
     void initialize();
   }, [initialize]);
+
+  useEffect(() => {
+    void setupNotificationCategories();
+  }, []);
 
   useEffect(() => {
     if (fontsLoaded || fontError) {
@@ -118,7 +125,9 @@ export default function RootLayout() {
     <trpc.Provider client={trpcClient} queryClient={queryClient}>
       <QueryClientProvider client={queryClient}>
         <GestureHandlerRootView style={{ flex: 1 }}>
-          <RootLayoutNav />
+          <ErrorBoundary>
+            <RootLayoutNav />
+          </ErrorBoundary>
         </GestureHandlerRootView>
       </QueryClientProvider>
     </trpc.Provider>

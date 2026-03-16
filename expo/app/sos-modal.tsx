@@ -92,6 +92,12 @@ export default function SOSModal() {
           This will notify your guardian with your exact location and call 911
         </Text>
 
+        <View style={styles.disclaimerBanner}>
+          <Text style={styles.disclaimerText}>
+            This will notify your guardian and attempt to call 911. Safely is not an emergency dispatch service. Call 911 directly if you cannot use this app.
+          </Text>
+        </View>
+
         <View style={styles.holdContainer}>
           <TouchableOpacity
             activeOpacity={1}
@@ -219,5 +225,19 @@ const styles = StyleSheet.create({
   cancelText: {
     fontSize: 15,
     color: Colors.textSecondary,
+  },
+  disclaimerBanner: {
+    backgroundColor: 'rgba(255,59,59,0.08)',
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 24,
+    marginHorizontal: 8,
+  },
+  disclaimerText: {
+    fontFamily: 'DMSans_400Regular',
+    fontSize: 12,
+    color: '#CC2020',
+    textAlign: 'center',
+    lineHeight: 18,
   },
 });
