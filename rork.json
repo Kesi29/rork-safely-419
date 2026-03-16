@@ -1,0 +1,9 @@
+{
+  "apps": [
+    {
+      "name": "Safely",
+      "path": "expo",
+      "framework": "react-native"
+    }
+  ]
+}
