@@ -483,11 +483,7 @@ export default function HomeScreen() {
       </View>
 
       <SafeAreaView edges={['top']} style={styles.overlay} pointerEvents="box-none">
-        <View style={styles.headerRow} pointerEvents="box-none">
-          <View style={styles.headerCenter}>
-            <Text style={styles.headerTitle}>Safely</Text>
-          </View>
-        </View>
+
 
         {showSafetyBanner && (
           <View style={styles.safetyBannerWrapper}>
@@ -1028,7 +1024,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   safetyBanner: {
-    backgroundColor: 'rgba(255, 176, 32, 0.10)',
+    backgroundColor: '#FFF8EC',
     borderRadius: 12,
     borderWidth: 1,
     borderColor: 'rgba(255, 176, 32, 0.30)',
