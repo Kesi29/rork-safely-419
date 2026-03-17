@@ -1,26 +1,14 @@
 import { Platform } from 'react-native';
 import * as Location from 'expo-location';
+import * as TaskManager from 'expo-task-manager';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const LOCATION_TASK = 'safely-background-location';
 const GEOFENCE_TASK = 'safely-geofence';
 const HOME_GEOFENCE_ID = 'safely-home';
 
-let TaskManager: typeof import('expo-task-manager') | null = null;
-
-async function loadTaskManager() {
-  if (Platform.OS === 'web') return null;
-  if (!TaskManager) {
-    TaskManager = await import('expo-task-manager');
-  }
-  return TaskManager;
-}
-
 if (Platform.OS !== 'web') {
-  import('expo-task-manager').then((TM) => {
-    TaskManager = TM;
-
-    TM.defineTask(LOCATION_TASK, async ({ data, error }: any) => {
+  TaskManager.defineTask(LOCATION_TASK, async ({ data, error }: any) => {
       if (error) {
         console.log('Background location task error:', error);
         return;
@@ -49,7 +37,7 @@ if (Platform.OS !== 'web') {
       }
     });
 
-    TM.defineTask(GEOFENCE_TASK, async ({ data, error }: any) => {
+  TaskManager.defineTask(GEOFENCE_TASK, async ({ data, error }: any) => {
       if (error) {
         console.log('Geofence task error:', error);
         return;
@@ -77,9 +65,6 @@ if (Platform.OS !== 'web') {
         }
       }
     });
-  }).catch((e) => {
-    console.log('Failed to load TaskManager:', e);
-  });
 }
 
 export async function requestLocationPermissions(): Promise<boolean> {
@@ -106,10 +91,7 @@ export async function startBackgroundTracking(): Promise<void> {
   if (Platform.OS === 'web') return;
 
   try {
-    const TM = await loadTaskManager();
-    if (!TM) return;
-
-    const isRegistered = await TM.isTaskRegisteredAsync(LOCATION_TASK);
+    const isRegistered = await TaskManager.isTaskRegisteredAsync(LOCATION_TASK);
     if (!isRegistered) {
       await Location.startLocationUpdatesAsync(LOCATION_TASK, {
         accuracy: Location.Accuracy.Balanced,
@@ -156,16 +138,13 @@ export async function stopAllTracking(): Promise<void> {
   if (Platform.OS === 'web') return;
 
   try {
-    const TM = await loadTaskManager();
-    if (!TM) return;
-
-    const locationRunning = await TM.isTaskRegisteredAsync(LOCATION_TASK);
+    const locationRunning = await TaskManager.isTaskRegisteredAsync(LOCATION_TASK);
     if (locationRunning) {
       await Location.stopLocationUpdatesAsync(LOCATION_TASK);
       console.log('Background location tracking stopped');
     }
 
-    const geofenceRunning = await TM.isTaskRegisteredAsync(GEOFENCE_TASK);
+    const geofenceRunning = await TaskManager.isTaskRegisteredAsync(GEOFENCE_TASK);
     if (geofenceRunning) {
       await Location.stopGeofencingAsync(GEOFENCE_TASK);
       console.log('Geofence monitoring stopped');

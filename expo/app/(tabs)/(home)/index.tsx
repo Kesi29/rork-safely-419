@@ -22,6 +22,7 @@ import * as Location from 'expo-location';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Colors from '@/constants/colors';
 import { fonts } from '@/constants/typography';
+import * as Battery from 'expo-battery';
 import { useSafelyStore } from '@/store';
 import Avatar from '@/components/Avatar';
 import Card from '@/components/Card';
@@ -337,7 +338,6 @@ export default function HomeScreen() {
       }
 
       try {
-        const Battery = await import('expo-battery');
         const batteryLevel = await Battery.getBatteryLevelAsync();
         if (batteryLevel >= 0 && batteryLevel < 0.20) {
           Alert.alert(
