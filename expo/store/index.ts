@@ -41,6 +41,7 @@ const initialState = {
   hasOnboarded: false,
   isInitialized: false,
   activeSessionId: null as string | null,
+  showEventWelcome: null as ConnectedEvent | null,
 };
 
 function _persist(state: typeof initialState) {
@@ -205,12 +206,28 @@ export const useSafelyStore = create(
       _persist({ ...get(), guardians, primaryGuardian: primary });
     },
 
+    addConnectedEvent: (event: ConnectedEvent) => {
+      const state = get();
+      if (state.connectedEvents.some((e) => e.id === event.id)) return;
+      const events = [...state.connectedEvents, event];
+      set({ connectedEvents: events });
+      _persist({ ...get(), connectedEvents: events });
+    },
+
     addEvent: (event: ConnectedEvent) => {
       const state = get();
       if (state.connectedEvents.some((e) => e.id === event.id)) return;
       const events = [...state.connectedEvents, event];
       set({ connectedEvents: events });
       _persist({ ...get(), connectedEvents: events });
+    },
+
+    setShowEventWelcome: (event: ConnectedEvent | null) => {
+      set({ showEventWelcome: event });
+    },
+
+    clearEventWelcome: () => {
+      set({ showEventWelcome: null });
     },
 
     addSessionHistory: (entry: SessionHistory) => {

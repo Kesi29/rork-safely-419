@@ -30,6 +30,7 @@ import { supabase } from '@/lib/supabase';
 import { persistActiveSession } from '@/hooks/useBackgroundLocation';
 import { startBackgroundTracking, registerHomeGeofence } from '@/hooks/useBackgroundLocation';
 import { scheduleLocalNotification } from '@/hooks/useNotifications';
+import EventWelcomeSheet from '@/components/EventWelcomeSheet';
 
 const ORB_SIZE = 140;
 const _SCREEN_WIDTH = Dimensions.get('window').width;
@@ -76,6 +77,8 @@ export default function HomeScreen() {
     setCurrentCoords,
     userId,
     setActiveSessionId,
+    showEventWelcome,
+    clearEventWelcome,
   } = useSafelyStore();
 
   const [selectedEta, setSelectedEta] = useState(defaultEtaMinutes);
@@ -660,6 +663,11 @@ export default function HomeScreen() {
           </View>
         </View>
       </Modal>
+
+      <EventWelcomeSheet
+        event={showEventWelcome}
+        onDismiss={clearEventWelcome}
+      />
     </View>
   );
 }

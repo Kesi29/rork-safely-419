@@ -5,7 +5,7 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "rork-app",
+    "scheme": "safely",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "description": "Get home safe. Safely shares your location with a trusted guardian until you arrive home, with one-tap SOS emergency alerts.",

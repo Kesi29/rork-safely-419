@@ -33,6 +33,9 @@ export interface ConnectedEvent {
   name: string;
   endTime: string;
   timezone: string;
+  partnerSlug?: string;
+  scannedAt?: string;
+  status?: 'upcoming' | 'active' | 'ended';
 }
 
 export interface SessionHistory {

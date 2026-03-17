@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { MapPin, Play, Clock, AlertTriangle, Home as HomeIcon, Edit2, Plus, FileText, Shield, AlertCircle, Code, ChevronRight, Info, Trash2 } from 'lucide-react-native';
+import { MapPin, Play, Clock, AlertTriangle, Calendar, Edit2, Plus, FileText, Shield, AlertCircle, Code, ChevronRight, Info, Trash2 } from 'lucide-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Colors from '@/constants/colors';
 import { fonts } from '@/constants/typography';
@@ -246,14 +246,29 @@ export default function SettingsScreen() {
             connectedEvents.map((event, idx) => (
               <View key={event.id} style={[styles.eventRow, idx > 0 && styles.eventBorder]}>
                 <View style={styles.eventIconCircle}>
-                  <HomeIcon size={14} color={Colors.green} />
+                  <Calendar size={14} color={Colors.green} />
                 </View>
                 <View style={styles.eventInfo}>
                   <Text style={styles.eventName}>{event.name}</Text>
-                  <Text style={styles.eventMeta}>Partner</Text>
+                  <Text style={styles.eventMeta}>
+                    {event.endTime ? `Ends at ${event.endTime}` : ''}
+                    {event.partnerSlug ? ` · ${event.partnerSlug}` : ''}
+                  </Text>
                 </View>
-                <View style={styles.demoBadge}>
-                  <Text style={styles.demoBadgeText}>Demo</Text>
+                <View style={[
+                  styles.statusBadge,
+                  event.status === 'upcoming' && styles.statusUpcoming,
+                  event.status === 'active' && styles.statusActive,
+                  event.status === 'ended' && styles.statusEnded,
+                ]}>
+                  <Text style={[
+                    styles.statusBadgeText,
+                    event.status === 'upcoming' && styles.statusUpcomingText,
+                    event.status === 'active' && styles.statusActiveText,
+                    event.status === 'ended' && styles.statusEndedText,
+                  ]}>
+                    {event.status === 'upcoming' ? 'Upcoming' : event.status === 'active' ? 'Active' : event.status === 'ended' ? 'Ended' : 'Event'}
+                  </Text>
                 </View>
               </View>
             ))
@@ -578,6 +593,41 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '500' as const,
     color: Colors.textSecondary,
+  },
+  statusBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 10,
+    borderWidth: 0.5,
+    borderColor: Colors.border,
+    backgroundColor: Colors.backgroundSoft,
+  },
+  statusUpcoming: {
+    backgroundColor: Colors.greenLight,
+    borderColor: Colors.green,
+  },
+  statusActive: {
+    backgroundColor: Colors.greenLight,
+    borderColor: Colors.green,
+  },
+  statusEnded: {
+    backgroundColor: Colors.backgroundSoft,
+    borderColor: Colors.border,
+  },
+  statusBadgeText: {
+    fontSize: 11,
+    fontWeight: '500' as const,
+    color: Colors.textSecondary,
+  },
+  statusUpcomingText: {
+    color: Colors.green,
+  },
+  statusActiveText: {
+    color: Colors.green,
+    fontWeight: '600' as const,
+  },
+  statusEndedText: {
+    color: Colors.textMuted,
   },
   addEventButton: {
     flexDirection: 'row',
