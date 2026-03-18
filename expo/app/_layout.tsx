@@ -8,6 +8,7 @@ import { useFonts } from "expo-font";
 import { useSafelyStore } from "@/store";
 import { trpc, trpcClient } from "@/lib/trpc";
 import { supabase } from "@/lib/supabase";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { setupNotificationCategories, scheduleLocalNotification } from "@/hooks/useNotifications";
 import { ConnectedEvent } from "@/store/types";
@@ -34,7 +35,6 @@ async function scheduleEventEndNotification(event: ConnectedEvent): Promise<void
       'EVENT_END'
     );
     if (notifId) {
-      const AsyncStorage = (await import('@react-native-async-storage/async-storage')).default;
       await AsyncStorage.setItem(`safely_event_notif_${event.id}`, notifId);
     }
     console.log('Scheduled event end notification in', secondsUntil, 'seconds');
