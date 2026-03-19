@@ -1,24 +1,45 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import React, { useEffect, useRef } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Animated } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ShieldCheck, Check } from 'lucide-react-native';
+import { ShieldCheck } from 'lucide-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Colors from '@/constants/colors';
 import { fonts } from '@/constants/typography';
 
 export default function WelcomeScreen() {
   const router = useRouter();
-  const [ageConfirmed, setAgeConfirmed] = useState(false);
+  const logoOpacity = useRef(new Animated.Value(0)).current;
+  const logoScale = useRef(new Animated.Value(0.8)).current;
+  const textOpacity = useRef(new Animated.Value(0)).current;
+  const buttonOpacity = useRef(new Animated.Value(0)).current;
+  const buttonTranslate = useRef(new Animated.Value(30)).current;
+
+  useEffect(() => {
+    Animated.sequence([
+      Animated.parallel([
+        Animated.timing(logoOpacity, { toValue: 1, duration: 800, useNativeDriver: true }),
+        Animated.timing(logoScale, { toValue: 1, duration: 800, useNativeDriver: true }),
+      ]),
+      Animated.timing(textOpacity, { toValue: 1, duration: 500, useNativeDriver: true }),
+      Animated.parallel([
+        Animated.timing(buttonOpacity, { toValue: 1, duration: 400, useNativeDriver: true }),
+        Animated.timing(buttonTranslate, { toValue: 0, duration: 400, useNativeDriver: true }),
+      ]),
+    ]).start();
+  }, [logoOpacity, logoScale, textOpacity, buttonOpacity, buttonTranslate]);
 
   const handleGetStarted = async () => {
     try {
       await AsyncStorage.setItem('safely_terms_accepted_at', new Date().toISOString());
       await AsyncStorage.setItem('safely_terms_version', '2026-03');
-      await AsyncStorage.setItem('safely_age_confirmed', 'true');
     } catch (e) {
       console.log('WelcomeScreen: Error saving acceptance', e);
     }
+    router.push('/onboarding/phone');
+  };
+
+  const handleSignIn = () => {
     router.push('/onboarding/phone');
   };
 
@@ -28,69 +49,39 @@ export default function WelcomeScreen() {
         <View style={styles.content}>
           <View style={styles.spacer} />
 
-          <Text style={styles.title}>Safely</Text>
-          <Text style={styles.subtitle}>Get home safe.</Text>
+          <Animated.View style={[styles.logoSection, { opacity: logoOpacity, transform: [{ scale: logoScale }] }]}>
+            <View style={styles.shieldWrapper}>
+              <ShieldCheck size={80} color={Colors.green} strokeWidth={1.3} />
+            </View>
+            <Text style={styles.title}>Safely</Text>
+          </Animated.View>
 
-          <View style={styles.iconWrapper}>
-            <ShieldCheck size={72} color={Colors.green} strokeWidth={1.5} />
-          </View>
+          <Animated.View style={[styles.taglineSection, { opacity: textOpacity }]}>
+            <Text style={styles.tagline}>Get home safely, every time.</Text>
+            <Text style={styles.subtext}>Share your journey with someone who cares.</Text>
+          </Animated.View>
 
           <View style={styles.spacer} />
         </View>
 
-        <View style={styles.bottomSection}>
+        <Animated.View style={[styles.bottomSection, { opacity: buttonOpacity, transform: [{ translateY: buttonTranslate }] }]}>
           <TouchableOpacity
-            style={styles.ageRow}
-            onPress={() => setAgeConfirmed(!ageConfirmed)}
-            activeOpacity={0.7}
-          >
-            <View style={[
-              styles.checkbox,
-              ageConfirmed && styles.checkboxChecked,
-            ]}>
-              {ageConfirmed && <Check size={13} color="#FFFFFF" />}
-            </View>
-            <Text style={styles.ageText}>I confirm that I am 18 years of age or older</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.button, !ageConfirmed && styles.buttonDisabled]}
+            style={styles.button}
             onPress={handleGetStarted}
-            activeOpacity={0.8}
-            disabled={!ageConfirmed}
+            activeOpacity={0.85}
             testID="welcome-get-started"
           >
-            <Text style={[styles.buttonText, !ageConfirmed && styles.buttonTextDisabled]}>Get Started</Text>
+            <Text style={styles.buttonText}>Get Started</Text>
           </TouchableOpacity>
-
-          <View style={styles.legalTextWrapper}>
-            <Text style={styles.legalText}>
-              By continuing you agree to our{' '}
-              <Text
-                style={styles.legalLink}
-                onPress={() => router.push('/legal/terms')}
-              >
-                Terms of Service
-              </Text>
-              {' '}and{' '}
-              <Text
-                style={styles.legalLink}
-                onPress={() => router.push('/legal/privacy')}
-              >
-                Privacy Policy
-              </Text>
-              . Safely is not an emergency service.
-            </Text>
-          </View>
 
           <TouchableOpacity
             style={styles.linkBtn}
-            onPress={() => router.push('/onboarding/phone')}
+            onPress={handleSignIn}
             activeOpacity={0.6}
           >
             <Text style={styles.linkText}>I already have an account</Text>
           </TouchableOpacity>
-        </View>
+        </Animated.View>
       </SafeAreaView>
     </View>
   );
@@ -99,7 +90,7 @@ export default function WelcomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: '#0A0A0A',
   },
   safeArea: {
     flex: 1,
@@ -113,98 +104,60 @@ const styles = StyleSheet.create({
   spacer: {
     flex: 1,
   },
-  iconWrapper: {
-    marginTop: 48,
+  logoSection: {
+    alignItems: 'center',
+  },
+  shieldWrapper: {
+    marginBottom: 20,
   },
   title: {
     fontFamily: fonts.display,
-    fontSize: 52,
-    color: Colors.textPrimary,
+    fontSize: 56,
+    color: '#FFFFFF',
     marginBottom: 8,
   },
-  subtitle: {
+  taglineSection: {
+    alignItems: 'center',
+    marginTop: 24,
+  },
+  tagline: {
+    fontFamily: fonts.bodySemiBold,
+    fontSize: 20,
+    color: '#FFFFFF',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  subtext: {
     fontFamily: fonts.body,
-    fontSize: 22,
-    color: '#8A8A8A',
+    fontSize: 15,
+    color: 'rgba(255,255,255,0.5)',
+    textAlign: 'center',
   },
   bottomSection: {
     paddingHorizontal: 24,
     paddingBottom: 16,
   },
-  ageRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 16,
-    paddingHorizontal: 8,
-  },
-  checkbox: {
-    width: 20,
-    height: 20,
-    borderRadius: 4,
-    borderWidth: 1.5,
-    borderColor: '#BBBBBB',
-    backgroundColor: 'transparent',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 10,
-  },
-  checkboxChecked: {
-    borderColor: Colors.green,
-    backgroundColor: Colors.green,
-  },
-  ageText: {
-    fontFamily: fonts.body,
-    fontSize: 13,
-    color: '#8A8A8A',
-    flex: 1,
-  },
   button: {
     backgroundColor: Colors.green,
     height: 56,
-    borderRadius: 16,
+    borderRadius: 28,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: Colors.green,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
-    elevation: 4,
-  },
-  buttonDisabled: {
-    backgroundColor: Colors.disabled,
-    shadowOpacity: 0,
   },
   buttonText: {
     fontFamily: fonts.bodyBold,
     fontSize: 17,
-    color: Colors.textPrimary,
-  },
-  buttonTextDisabled: {
-    color: Colors.textMuted,
-  },
-  legalTextWrapper: {
-    paddingHorizontal: 8,
-    marginTop: 16,
-  },
-  legalText: {
-    fontFamily: fonts.body,
-    fontSize: 12,
-    color: '#BBBBBB',
-    textAlign: 'center',
-    lineHeight: 18,
-  },
-  legalLink: {
-    color: Colors.green,
-    textDecorationLine: 'underline' as const,
+    color: '#0A0A0A',
   },
   linkBtn: {
-    height: 44,
+    height: 48,
     justifyContent: 'center',
     alignItems: 'center',
     marginTop: 4,
   },
   linkText: {
     fontSize: 14,
-    color: '#8A8A8A',
+    fontFamily: fonts.body,
+    color: 'rgba(255,255,255,0.45)',
   },
 });

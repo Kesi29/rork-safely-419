@@ -18,35 +18,20 @@ import Colors from '@/constants/colors';
 import { fonts } from '@/constants/typography';
 import { supabase } from '@/lib/supabase';
 import { useSafelyStore } from '@/store';
+import OnboardingProgressBar from '@/components/OnboardingProgressBar';
 
 const CODE_LENGTH = 6;
-
-function ProgressDots({ active }: { active: number }) {
-  return (
-    <View style={dotStyles.row}>
-      {[0, 1, 2].map((i) => (
-        <View key={i} style={[dotStyles.dot, i < active && dotStyles.dotActive]} />
-      ))}
-    </View>
-  );
-}
-
-const dotStyles = StyleSheet.create({
-  row: { flexDirection: 'row', gap: 6, marginBottom: 24 },
-  dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#E0E0E0' },
-  dotActive: { backgroundColor: Colors.green },
-});
 
 export default function VerifyScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ phone: string; displayPhone: string }>();
-  const { setUserId, setUserPhone } = useSafelyStore();
+  const { setUserId, setUserPhone, updateOnboardingProfile } = useSafelyStore();
 
   const [code, setCode] = useState<string[]>(Array(CODE_LENGTH).fill(''));
   const [activeIndex, setActiveIndex] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [resendTimer, setResendTimer] = useState(30);
+  const [resendTimer, setResendTimer] = useState(45);
 
   const inputRefs = useRef<(TextInput | null)[]>([]);
   const shakeAnim = useRef(new Animated.Value(0)).current;
@@ -102,7 +87,35 @@ export default function VerifyScreen() {
         console.log('VerifyScreen: Verified! User ID:', data.user.id);
         setUserId(data.user.id);
         setUserPhone(params.phone);
-        router.push('/onboarding/location-permission');
+        updateOnboardingProfile({ onboardingStep: 3 });
+
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('user_id', data.user.id)
+          .single();
+
+        if (profile?.onboarding_completed) {
+          console.log('VerifyScreen: User already completed onboarding, going to home');
+          useSafelyStore.getState().setHasOnboarded(true);
+          router.replace('/(tabs)/(home)');
+          return;
+        }
+
+        if (profile) {
+          console.log('VerifyScreen: Resuming onboarding from existing profile');
+          updateOnboardingProfile({
+            firstName: profile.first_name ?? '',
+            lastName: profile.last_name ?? '',
+            avatarUrl: profile.avatar_url ?? null,
+            guardianName: profile.guardian_name ?? '',
+            guardianPhone: profile.guardian_phone ?? '',
+            emergencyName: profile.emergency_name ?? '',
+            emergencyPhone: profile.emergency_phone ?? '',
+          });
+        }
+
+        router.push('/onboarding/name');
       } else {
         setError('Verification failed. Please try again.');
         shakeBoxes();
@@ -114,7 +127,7 @@ export default function VerifyScreen() {
     } finally {
       setLoading(false);
     }
-  }, [params.phone, setUserId, setUserPhone, router, shakeBoxes]);
+  }, [params.phone, setUserId, setUserPhone, updateOnboardingProfile, router, shakeBoxes]);
 
   const handleDigitChange = useCallback((text: string, index: number) => {
     const digit = text.replace(/\D/g, '').slice(-1);
@@ -155,7 +168,7 @@ export default function VerifyScreen() {
       if (resendError) {
         setError(resendError.message);
       } else {
-        setResendTimer(30);
+        setResendTimer(45);
         setError(null);
       }
     } catch (e) {
@@ -163,9 +176,18 @@ export default function VerifyScreen() {
     }
   }, [params.phone, resendTimer]);
 
+  const maskedPhone = params.phone ? `****${params.phone.slice(-4)}` : '';
+
+  const formatTimer = (seconds: number) => {
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return `${m}:${s.toString().padStart(2, '0')}`;
+  };
+
   return (
     <View style={styles.container}>
       <SafeAreaView edges={['top', 'bottom']} style={styles.safeArea}>
+        <OnboardingProgressBar step={3} />
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           style={styles.flex}
@@ -176,14 +198,12 @@ export default function VerifyScreen() {
               onPress={() => router.back()}
               hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
             >
-              <ArrowLeft size={24} color={Colors.textPrimary} />
+              <ArrowLeft size={24} color="#FFFFFF" />
             </TouchableOpacity>
 
-            <ProgressDots active={1} />
-
-            <Text style={styles.title}>Enter your code</Text>
+            <Text style={styles.title}>Check your texts</Text>
             <Text style={styles.subtitle}>
-              We sent a 6-digit code to {params.displayPhone ?? params.phone}
+              We sent a 6-digit code to {maskedPhone}
             </Text>
 
             <Animated.View style={[styles.codeRow, { transform: [{ translateX: shakeAnim }] }]}>
@@ -195,6 +215,7 @@ export default function VerifyScreen() {
                     styles.codeBox,
                     i === activeIndex && styles.codeBoxActive,
                     error ? styles.codeBoxError : null,
+                    code[i] ? styles.codeBoxFilled : null,
                   ]}
                   value={code[i]}
                   onChangeText={(text) => handleDigitChange(text, i)}
@@ -222,7 +243,7 @@ export default function VerifyScreen() {
               style={styles.resendBtn}
             >
               <Text style={[styles.resendText, resendTimer > 0 && styles.resendTextDisabled]}>
-                {resendTimer > 0 ? `Resend in ${resendTimer}s` : 'Resend code'}
+                {resendTimer > 0 ? `Resend in ${formatTimer(resendTimer)}` : 'Resend code'}
               </Text>
             </TouchableOpacity>
           </View>
@@ -235,7 +256,7 @@ export default function VerifyScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: '#0A0A0A',
   },
   safeArea: {
     flex: 1,
@@ -246,25 +267,25 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     paddingHorizontal: 24,
-    paddingTop: 12,
+    paddingTop: 4,
   },
   backBtn: {
     width: 40,
     height: 40,
     justifyContent: 'center',
-    marginBottom: 16,
+    marginBottom: 24,
   },
   title: {
     fontFamily: fonts.display,
-    fontSize: 26,
-    color: Colors.textPrimary,
+    fontSize: 28,
+    color: '#FFFFFF',
     marginBottom: 8,
   },
   subtitle: {
     fontFamily: fonts.body,
-    fontSize: 14,
-    color: '#8A8A8A',
-    marginBottom: 32,
+    fontSize: 15,
+    color: 'rgba(255,255,255,0.5)',
+    marginBottom: 40,
   },
   codeRow: {
     flexDirection: 'row',
@@ -274,19 +295,22 @@ const styles = StyleSheet.create({
   },
   codeBox: {
     width: 48,
-    height: 56,
-    borderRadius: 12,
+    height: 58,
+    borderRadius: 14,
     borderWidth: 1,
-    borderColor: Colors.border,
-    backgroundColor: Colors.background,
-    textAlign: 'center',
+    borderColor: 'rgba(255,255,255,0.12)',
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    textAlign: 'center' as const,
     fontSize: 24,
     fontFamily: fonts.bodyBold,
-    color: Colors.textPrimary,
+    color: '#FFFFFF',
   },
   codeBoxActive: {
     borderColor: Colors.green,
     borderWidth: 2,
+  },
+  codeBoxFilled: {
+    backgroundColor: 'rgba(255,255,255,0.1)',
   },
   codeBoxError: {
     borderColor: Colors.red,
@@ -306,7 +330,7 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontSize: 14,
-    color: Colors.textSecondary,
+    color: 'rgba(255,255,255,0.5)',
   },
   resendBtn: {
     alignSelf: 'center',
@@ -319,6 +343,6 @@ const styles = StyleSheet.create({
     fontFamily: fonts.bodyMedium,
   },
   resendTextDisabled: {
-    color: '#8A8A8A',
+    color: 'rgba(255,255,255,0.3)',
   },
 });

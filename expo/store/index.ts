@@ -9,6 +9,7 @@ import {
   SessionData,
   ConnectedEvent,
   SessionHistory,
+  OnboardingProfile,
 } from './types';
 import {
   DEFAULT_USER_NAME,
@@ -42,6 +43,17 @@ const initialState = {
   isInitialized: false,
   activeSessionId: null as string | null,
   showEventWelcome: null as ConnectedEvent | null,
+  onboardingProfile: {
+    firstName: '',
+    lastName: '',
+    avatarUrl: null,
+    guardianName: '',
+    guardianPhone: '',
+    emergencyName: '',
+    emergencyPhone: '',
+    onboardingCompleted: false,
+    onboardingStep: 0,
+  } as OnboardingProfile,
 };
 
 function _persist(state: typeof initialState) {
@@ -56,6 +68,7 @@ function _persist(state: typeof initialState) {
     sessionHistory: state.sessionHistory,
     defaultEtaMinutes: state.defaultEtaMinutes,
     hasOnboarded: state.hasOnboarded,
+    onboardingProfile: state.onboardingProfile,
   };
   AsyncStorage.setItem('safely_state', JSON.stringify(toSave)).catch((e) =>
     console.log('Persist error:', e)
@@ -73,6 +86,7 @@ export const useSafelyStore = create(
             userId: parsed.userId ?? null,
             userPhone: parsed.userPhone ?? null,
             userName: parsed.userName ?? DEFAULT_USER_NAME,
+            onboardingProfile: parsed.onboardingProfile ?? initialState.onboardingProfile,
             guardians: parsed.guardians ?? [DEFAULT_PRIMARY_GUARDIAN],
             primaryGuardian: parsed.primaryGuardian ?? DEFAULT_PRIMARY_GUARDIAN,
             homeAddress: parsed.homeAddress ?? DEFAULT_HOME_ADDRESS,
@@ -252,6 +266,26 @@ export const useSafelyStore = create(
     setHasOnboarded: (value: boolean) => {
       set({ hasOnboarded: value });
       _persist({ ...get(), hasOnboarded: value });
+    },
+
+    updateOnboardingProfile: (updates: Partial<OnboardingProfile>) => {
+      const current = get().onboardingProfile;
+      const updated = { ...current, ...updates };
+      set({ onboardingProfile: updated });
+      _persist({ ...get(), onboardingProfile: updated });
+    },
+
+    completeOnboarding: () => {
+      const profile = get().onboardingProfile;
+      const fullName = `${profile.firstName} ${profile.lastName}`.trim();
+      if (fullName) {
+        set({ userName: fullName });
+      }
+      set({
+        hasOnboarded: true,
+        onboardingProfile: { ...profile, onboardingCompleted: true },
+      });
+      _persist(get());
     },
   }))
 );

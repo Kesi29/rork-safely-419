@@ -16,6 +16,7 @@ import { ArrowLeft } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { fonts } from '@/constants/typography';
 import { supabase } from '@/lib/supabase';
+import OnboardingProgressBar from '@/components/OnboardingProgressBar';
 
 interface CountryCode {
   flag: string;
@@ -37,22 +38,6 @@ function formatPhoneUS(raw: string): string {
   if (digits.length <= 6) return `(${digits.slice(0, 3)}) ${digits.slice(3)}`;
   return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
 }
-
-function ProgressDots({ active }: { active: number }) {
-  return (
-    <View style={dotStyles.row}>
-      {[0, 1, 2].map((i) => (
-        <View key={i} style={[dotStyles.dot, i < active && dotStyles.dotActive]} />
-      ))}
-    </View>
-  );
-}
-
-const dotStyles = StyleSheet.create({
-  row: { flexDirection: 'row', gap: 6, marginBottom: 24 },
-  dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#E0E0E0' },
-  dotActive: { backgroundColor: Colors.green },
-});
 
 export default function PhoneScreen() {
   const router = useRouter();
@@ -120,6 +105,7 @@ export default function PhoneScreen() {
   return (
     <View style={styles.container}>
       <SafeAreaView edges={['top', 'bottom']} style={styles.safeArea}>
+        <OnboardingProgressBar step={2} />
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           style={styles.flex}
@@ -134,13 +120,11 @@ export default function PhoneScreen() {
               onPress={() => router.back()}
               hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
             >
-              <ArrowLeft size={24} color={Colors.textPrimary} />
+              <ArrowLeft size={24} color="#FFFFFF" />
             </TouchableOpacity>
 
-            <ProgressDots active={1} />
-
             <Text style={styles.title}>What's your number?</Text>
-            <Text style={styles.subtitle}>We'll send you a code to verify it's you.</Text>
+            <Text style={styles.subtitle}>We'll send you a verification code. No spam, ever.</Text>
 
             <View style={styles.inputCard}>
               <TouchableOpacity
@@ -156,7 +140,7 @@ export default function PhoneScreen() {
                 value={phone}
                 onChangeText={handlePhoneChange}
                 placeholder="(555) 012-3456"
-                placeholderTextColor={Colors.textMuted}
+                placeholderTextColor="rgba(255,255,255,0.25)"
                 keyboardType="phone-pad"
                 autoFocus
                 testID="phone-input"
@@ -167,7 +151,7 @@ export default function PhoneScreen() {
               <View style={styles.countryList}>
                 {COUNTRY_CODES.map((c, idx) => (
                   <TouchableOpacity
-                    key={c.code}
+                    key={c.code + c.dial}
                     style={[
                       styles.countryRow,
                       idx === selectedCountry && styles.countryRowActive,
@@ -186,18 +170,22 @@ export default function PhoneScreen() {
             )}
 
             {error && <Text style={styles.errorText}>{error}</Text>}
+
+            <Text style={styles.privacyNote}>
+              Your number is only shared with your chosen guardians
+            </Text>
           </ScrollView>
 
           <View style={styles.bottomSection}>
             <TouchableOpacity
               style={[styles.button, loading && styles.buttonDisabled]}
               onPress={handleSendCode}
-              activeOpacity={0.8}
+              activeOpacity={0.85}
               disabled={loading}
               testID="send-code-btn"
             >
               {loading ? (
-                <ActivityIndicator color={Colors.textPrimary} />
+                <ActivityIndicator color="#0A0A0A" />
               ) : (
                 <Text style={styles.buttonText}>Send Code</Text>
               )}
@@ -216,7 +204,7 @@ export default function PhoneScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: '#0A0A0A',
   },
   safeArea: {
     flex: 1,
@@ -226,48 +214,44 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: 24,
-    paddingTop: 12,
+    paddingTop: 4,
   },
   backBtn: {
     width: 40,
     height: 40,
     justifyContent: 'center',
-    marginBottom: 16,
+    marginBottom: 24,
   },
   title: {
     fontFamily: fonts.display,
-    fontSize: 26,
-    color: Colors.textPrimary,
+    fontSize: 28,
+    color: '#FFFFFF',
     marginBottom: 8,
   },
   subtitle: {
     fontFamily: fonts.body,
-    fontSize: 14,
-    color: '#8A8A8A',
+    fontSize: 15,
+    color: 'rgba(255,255,255,0.5)',
     marginBottom: 32,
+    lineHeight: 22,
   },
   inputCard: {
     flexDirection: 'row',
     alignItems: 'center',
     height: 56,
     borderRadius: 16,
-    backgroundColor: Colors.background,
-    borderWidth: 0.5,
-    borderColor: Colors.border,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.12)',
     paddingHorizontal: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 3,
   },
   countryBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 12,
     height: '100%',
-    borderRightWidth: 0.5,
-    borderRightColor: Colors.border,
+    borderRightWidth: 1,
+    borderRightColor: 'rgba(255,255,255,0.1)',
     gap: 4,
   },
   countryFlag: {
@@ -276,29 +260,24 @@ const styles = StyleSheet.create({
   countryDial: {
     fontSize: 16,
     fontFamily: fonts.bodyMedium,
-    color: Colors.textPrimary,
+    color: '#FFFFFF',
   },
   phoneInput: {
     flex: 1,
     fontSize: 18,
     fontFamily: fonts.body,
-    color: Colors.textPrimary,
+    color: '#FFFFFF',
     paddingHorizontal: 12,
     paddingVertical: 0,
     height: '100%',
   },
   countryList: {
     marginTop: 8,
-    backgroundColor: Colors.background,
+    backgroundColor: '#1A1A1A',
     borderRadius: 12,
-    borderWidth: 0.5,
-    borderColor: Colors.border,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
     overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 3,
   },
   countryRow: {
     flexDirection: 'row',
@@ -306,11 +285,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     gap: 10,
-    borderBottomWidth: 0.5,
-    borderBottomColor: Colors.border,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255,255,255,0.06)',
   },
   countryRowActive: {
-    backgroundColor: Colors.greenLight,
+    backgroundColor: 'rgba(24,165,125,0.15)',
   },
   countryRowFlag: {
     fontSize: 18,
@@ -318,18 +297,25 @@ const styles = StyleSheet.create({
   countryRowCode: {
     fontSize: 14,
     fontFamily: fonts.bodyMedium,
-    color: Colors.textPrimary,
+    color: '#FFFFFF',
     width: 30,
   },
   countryRowDial: {
     fontSize: 14,
-    color: Colors.textSecondary,
+    color: 'rgba(255,255,255,0.5)',
   },
   errorText: {
     fontSize: 13,
     color: Colors.red,
     marginTop: 12,
     marginLeft: 4,
+  },
+  privacyNote: {
+    fontFamily: fonts.body,
+    fontSize: 13,
+    color: 'rgba(255,255,255,0.3)',
+    textAlign: 'center',
+    marginTop: 24,
   },
   bottomSection: {
     paddingHorizontal: 24,
@@ -339,7 +325,7 @@ const styles = StyleSheet.create({
   button: {
     backgroundColor: Colors.green,
     height: 56,
-    borderRadius: 16,
+    borderRadius: 28,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -349,7 +335,7 @@ const styles = StyleSheet.create({
   buttonText: {
     fontFamily: fonts.bodyBold,
     fontSize: 17,
-    color: Colors.textPrimary,
+    color: '#0A0A0A',
   },
   skipBtn: {
     height: 44,
@@ -358,6 +344,7 @@ const styles = StyleSheet.create({
   },
   skipText: {
     fontSize: 14,
-    color: '#8A8A8A',
+    fontFamily: fonts.body,
+    color: 'rgba(255,255,255,0.4)',
   },
 });

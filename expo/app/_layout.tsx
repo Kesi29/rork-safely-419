@@ -65,6 +65,7 @@ export default function RootLayout() {
   const setUserName = useSafelyStore((s) => s.setUserName);
   const setHomeAddress = useSafelyStore((s) => s.setHomeAddress);
   const setUserId = useSafelyStore((s) => s.setUserId);
+  const updateOnboardingProfile = useSafelyStore((s) => s.updateOnboardingProfile);
 
   const [fontsLoaded, fontError] = useFonts({
     'PlayfairDisplay_700Italic': require('../assets/fonts/PlayfairDisplay-BoldItalic.ttf'),
@@ -152,27 +153,38 @@ export default function RootLayout() {
           setUserId(userId);
 
           try {
-            const { data: user } = await supabase
-              .from('users')
+            const { data: profile } = await supabase
+              .from('profiles')
               .select('*')
-              .eq('id', userId)
+              .eq('user_id', userId)
               .single();
 
-            if (user) {
-              console.log('RootLayout: Hydrating from Supabase user data');
-              if (user.name) setUserName(user.name);
-              if (user.home_address && user.home_latitude && user.home_longitude) {
+            if (profile) {
+              console.log('RootLayout: Hydrating from Supabase profile data');
+              const fullName = [profile.first_name, profile.last_name].filter(Boolean).join(' ');
+              if (fullName) setUserName(fullName);
+              if (profile.home_address && profile.home_latitude && profile.home_longitude) {
                 setHomeAddress({
-                  label: user.home_address,
+                  label: profile.home_address,
                   coords: {
-                    latitude: user.home_latitude,
-                    longitude: user.home_longitude,
+                    latitude: profile.home_latitude,
+                    longitude: profile.home_longitude,
                   },
                 });
               }
+              updateOnboardingProfile({
+                firstName: profile.first_name ?? '',
+                lastName: profile.last_name ?? '',
+                avatarUrl: profile.avatar_url ?? null,
+                guardianName: profile.guardian_name ?? '',
+                guardianPhone: profile.guardian_phone ?? '',
+                emergencyName: profile.emergency_name ?? '',
+                emergencyPhone: profile.emergency_phone ?? '',
+                onboardingCompleted: profile.onboarding_completed ?? false,
+              });
             }
           } catch (e) {
-            console.log('RootLayout: Error fetching user data', e);
+            console.log('RootLayout: Error fetching profile data', e);
           }
         } else {
           console.log('RootLayout: No Supabase session, user has onboarded locally');
@@ -183,7 +195,7 @@ export default function RootLayout() {
     };
 
     void checkSession();
-  }, [isInitialized, hasOnboarded, fontsLoaded, fontError, router, setUserId, setUserName, setHomeAddress]);
+  }, [isInitialized, hasOnboarded, fontsLoaded, fontError, router, setUserId, setUserName, setHomeAddress, updateOnboardingProfile]);
 
   if (!fontsLoaded && !fontError) return null;
 

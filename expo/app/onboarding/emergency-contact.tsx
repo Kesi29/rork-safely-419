@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ArrowLeft, ChevronDown, ChevronUp, Check } from 'lucide-react-native';
+import { ArrowLeft, Check } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { fonts } from '@/constants/typography';
 import { useSafelyStore } from '@/store';
@@ -40,17 +40,16 @@ function formatPhoneUS(raw: string): string {
   return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
 }
 
-export default function GuardianScreen() {
+export default function EmergencyContactScreen() {
   const router = useRouter();
-  const { addGuardian, userId, updateOnboardingProfile, onboardingProfile } = useSafelyStore();
+  const { userId, onboardingProfile, updateOnboardingProfile } = useSafelyStore();
 
-  const [name, setName] = useState(onboardingProfile.guardianName || '');
+  const [name, setName] = useState(onboardingProfile.emergencyName || '');
   const [phone, setPhone] = useState('');
   const [selectedCountry, setSelectedCountry] = useState(0);
   const [showCountryPicker, setShowCountryPicker] = useState(false);
-  const [showFaq, setShowFaq] = useState(false);
+  const [sameAsGuardian, setSameAsGuardian] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [confirmed, setConfirmed] = useState(false);
 
   const country = COUNTRY_CODES[selectedCountry];
   const isValid = name.trim().length >= 1 && phone.replace(/\D/g, '').length >= 7;
@@ -58,6 +57,19 @@ export default function GuardianScreen() {
   const handlePhoneChange = useCallback((text: string) => {
     setPhone(formatPhoneUS(text));
   }, []);
+
+  const toggleSameAsGuardian = useCallback(() => {
+    const next = !sameAsGuardian;
+    setSameAsGuardian(next);
+    if (next && onboardingProfile.guardianName) {
+      setName(onboardingProfile.guardianName);
+      const guardianDigits = onboardingProfile.guardianPhone.replace(/^\+\d+/, '');
+      setPhone(formatPhoneUS(guardianDigits));
+    } else if (!next) {
+      setName('');
+      setPhone('');
+    }
+  }, [sameAsGuardian, onboardingProfile]);
 
   const handleContinue = useCallback(async () => {
     if (!isValid) return;
@@ -68,50 +80,37 @@ export default function GuardianScreen() {
     const trimName = name.trim();
 
     try {
-      const guardian = {
-        id: `guardian-${Date.now()}`,
-        name: trimName,
-        phone: fullPhone,
-        relationship: 'Friend' as const,
-        isPrimary: true,
-        avatarColor: '#18A57D',
-      };
-
-      addGuardian(guardian);
       updateOnboardingProfile({
-        guardianName: trimName,
-        guardianPhone: fullPhone,
-        onboardingStep: 6,
+        emergencyName: trimName,
+        emergencyPhone: fullPhone,
+        onboardingStep: 7,
       });
 
       if (userId && !userId.startsWith('local-')) {
         await supabase.from('profiles').update({
-          guardian_name: trimName,
-          guardian_phone: fullPhone,
+          emergency_name: trimName,
+          emergency_phone: fullPhone,
         }).eq('user_id', userId);
       }
 
-      setConfirmed(true);
-      setTimeout(() => {
-        router.push('/onboarding/emergency-contact');
-      }, 800);
+      router.push('/onboarding/notification-permission');
     } catch (e) {
-      console.log('GuardianScreen: Error', e);
-      router.push('/onboarding/emergency-contact');
+      console.log('EmergencyContact: Error', e);
+      router.push('/onboarding/notification-permission');
     } finally {
       setLoading(false);
     }
-  }, [isValid, name, phone, country.dial, addGuardian, updateOnboardingProfile, userId, router]);
+  }, [isValid, name, phone, country.dial, updateOnboardingProfile, userId, router]);
 
   const handleSkip = useCallback(() => {
-    updateOnboardingProfile({ onboardingStep: 6 });
-    router.push('/onboarding/emergency-contact');
+    updateOnboardingProfile({ onboardingStep: 7 });
+    router.push('/onboarding/notification-permission');
   }, [updateOnboardingProfile, router]);
 
   return (
     <View style={styles.container}>
       <SafeAreaView edges={['top', 'bottom']} style={styles.safeArea}>
-        <OnboardingProgressBar step={6} />
+        <OnboardingProgressBar step={7} />
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           style={styles.flex}
@@ -130,21 +129,34 @@ export default function GuardianScreen() {
               <ArrowLeft size={24} color="#FFFFFF" />
             </TouchableOpacity>
 
-            <Text style={styles.title}>Who's your{'\n'}go-to person?</Text>
+            <Text style={styles.title}>One more{'\n'}safety net</Text>
             <Text style={styles.subtitle}>
-              This is who gets notified when you activate Safely. You can always change this later.
+              If something seems wrong, who should we call? This is different from your guardian.
             </Text>
 
+            {onboardingProfile.guardianName ? (
+              <TouchableOpacity
+                style={styles.sameRow}
+                onPress={toggleSameAsGuardian}
+                activeOpacity={0.7}
+              >
+                <View style={[styles.checkbox, sameAsGuardian && styles.checkboxChecked]}>
+                  {sameAsGuardian && <Check size={13} color="#0A0A0A" />}
+                </View>
+                <Text style={styles.sameText}>Same as my guardian</Text>
+              </TouchableOpacity>
+            ) : null}
+
             <View style={styles.card}>
-              <Text style={styles.inputLabel}>GUARDIAN'S NAME</Text>
+              <Text style={styles.inputLabel}>EMERGENCY CONTACT NAME</Text>
               <TextInput
                 style={styles.input}
                 value={name}
-                onChangeText={setName}
+                onChangeText={(t) => { setName(t); setSameAsGuardian(false); }}
                 placeholder="Their name"
                 placeholderTextColor="rgba(255,255,255,0.2)"
                 autoCapitalize="words"
-                testID="guardian-name-input"
+                testID="emergency-name-input"
               />
 
               <Text style={styles.inputLabel}>PHONE NUMBER</Text>
@@ -159,11 +171,11 @@ export default function GuardianScreen() {
                 <TextInput
                   style={styles.phoneInput}
                   value={phone}
-                  onChangeText={handlePhoneChange}
+                  onChangeText={(t) => { handlePhoneChange(t); setSameAsGuardian(false); }}
                   placeholder="(555) 012-3456"
                   placeholderTextColor="rgba(255,255,255,0.2)"
                   keyboardType="phone-pad"
-                  testID="guardian-phone-input"
+                  testID="emergency-phone-input"
                 />
               </View>
 
@@ -186,42 +198,14 @@ export default function GuardianScreen() {
                 </View>
               )}
             </View>
-
-            {confirmed && (
-              <View style={styles.confirmBanner}>
-                <Check size={16} color={Colors.green} />
-                <Text style={styles.confirmText}>
-                  {name.trim()} added as your guardian
-                </Text>
-              </View>
-            )}
-
-            <TouchableOpacity
-              style={styles.faqBtn}
-              onPress={() => setShowFaq(!showFaq)}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.faqBtnText}>Why do I need this?</Text>
-              {showFaq ? (
-                <ChevronUp size={16} color="rgba(255,255,255,0.4)" />
-              ) : (
-                <ChevronDown size={16} color="rgba(255,255,255,0.4)" />
-              )}
-            </TouchableOpacity>
-            {showFaq && (
-              <Text style={styles.faqText}>
-                Your guardian receives a text when you start your journey home and when you arrive safely. They don't need the app — just their phone. If something goes wrong, they'll be the first to know.
-              </Text>
-            )}
           </ScrollView>
 
           <View style={styles.bottomSection}>
             <TouchableOpacity
-              style={[styles.button, (!isValid || loading || confirmed) && styles.buttonDisabled]}
+              style={[styles.button, (!isValid || loading) && styles.buttonDisabled]}
               onPress={handleContinue}
               activeOpacity={0.85}
-              disabled={!isValid || loading || confirmed}
-              testID="add-guardian-btn"
+              disabled={!isValid || loading}
             >
               {loading ? (
                 <ActivityIndicator color="#0A0A0A" />
@@ -232,11 +216,9 @@ export default function GuardianScreen() {
               )}
             </TouchableOpacity>
 
-            {!confirmed && (
-              <TouchableOpacity onPress={handleSkip} style={styles.skipBtn}>
-                <Text style={styles.skipText}>Skip for now</Text>
-              </TouchableOpacity>
-            )}
+            <TouchableOpacity onPress={handleSkip} style={styles.skipBtn}>
+              <Text style={styles.skipText}>Skip for now</Text>
+            </TouchableOpacity>
           </View>
         </KeyboardAvoidingView>
       </SafeAreaView>
@@ -277,7 +259,31 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: 'rgba(255,255,255,0.5)',
     lineHeight: 22,
-    marginBottom: 28,
+    marginBottom: 24,
+  },
+  sameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 20,
+    gap: 10,
+  },
+  checkbox: {
+    width: 22,
+    height: 22,
+    borderRadius: 6,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.25)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  checkboxChecked: {
+    borderColor: Colors.green,
+    backgroundColor: Colors.green,
+  },
+  sameText: {
+    fontFamily: fonts.bodyMedium,
+    fontSize: 15,
+    color: 'rgba(255,255,255,0.6)',
   },
   card: {
     backgroundColor: 'rgba(255,255,255,0.05)',
@@ -374,41 +380,6 @@ const styles = StyleSheet.create({
   countryRowDial: {
     fontSize: 13,
     color: 'rgba(255,255,255,0.5)',
-  },
-  confirmBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginTop: 16,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    backgroundColor: 'rgba(24,165,125,0.12)',
-    borderRadius: 12,
-  },
-  confirmText: {
-    fontSize: 14,
-    color: Colors.green,
-    fontFamily: fonts.bodyMedium,
-    flex: 1,
-  },
-  faqBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginTop: 20,
-    paddingVertical: 8,
-  },
-  faqBtnText: {
-    fontSize: 14,
-    fontFamily: fonts.bodyMedium,
-    color: 'rgba(255,255,255,0.4)',
-  },
-  faqText: {
-    fontSize: 14,
-    fontFamily: fonts.body,
-    color: 'rgba(255,255,255,0.35)',
-    lineHeight: 21,
-    marginBottom: 8,
   },
   bottomSection: {
     paddingHorizontal: 24,

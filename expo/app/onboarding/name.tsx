@@ -8,6 +8,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
+  ScrollView,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -16,108 +17,122 @@ import Colors from '@/constants/colors';
 import { fonts } from '@/constants/typography';
 import { useSafelyStore } from '@/store';
 import { supabase } from '@/lib/supabase';
-
-function ProgressDots({ active }: { active: number }) {
-  return (
-    <View style={dotStyles.row}>
-      {[0, 1, 2].map((i) => (
-        <View key={i} style={[dotStyles.dot, i < active && dotStyles.dotActive]} />
-      ))}
-    </View>
-  );
-}
-
-const dotStyles = StyleSheet.create({
-  row: { flexDirection: 'row', gap: 6, marginBottom: 24 },
-  dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#E0E0E0' },
-  dotActive: { backgroundColor: Colors.green },
-});
+import OnboardingProgressBar from '@/components/OnboardingProgressBar';
 
 export default function NameScreen() {
   const router = useRouter();
-  const { setUserName, userId, userPhone } = useSafelyStore();
+  const { setUserName, userId, userPhone, onboardingProfile, updateOnboardingProfile } = useSafelyStore();
 
-  const [name, setName] = useState('');
+  const [firstName, setFirstName] = useState(onboardingProfile.firstName || '');
+  const [lastName, setLastName] = useState(onboardingProfile.lastName || '');
   const [loading, setLoading] = useState(false);
 
-  const isValid = name.trim().length >= 2;
+  const isValid = firstName.trim().length >= 1 && lastName.trim().length >= 1;
 
   const handleContinue = useCallback(async () => {
     if (!isValid) return;
 
     setLoading(true);
-    const trimmedName = name.trim();
+    const trimFirst = firstName.trim();
+    const trimLast = lastName.trim();
+    const fullName = `${trimFirst} ${trimLast}`;
 
     try {
-      setUserName(trimmedName);
+      setUserName(fullName);
+      updateOnboardingProfile({
+        firstName: trimFirst,
+        lastName: trimLast,
+        onboardingStep: 4,
+      });
 
       if (userId && !userId.startsWith('local-')) {
-        console.log('NameScreen: Upserting user to Supabase', userId);
-        const { error } = await supabase.from('users').upsert({
-          id: userId,
+        console.log('NameScreen: Upserting profile to Supabase', userId);
+        const { error } = await supabase.from('profiles').upsert({
+          user_id: userId,
           phone: userPhone,
-          name: trimmedName,
-        });
+          first_name: trimFirst,
+          last_name: trimLast,
+        }, { onConflict: 'user_id' });
         if (error) {
           console.log('NameScreen: Supabase upsert error', error);
         }
       }
 
-      router.push('/onboarding/guardian');
+      router.push('/onboarding/profile-photo');
     } catch (e) {
       console.log('NameScreen: Error', e);
-      router.push('/onboarding/guardian');
+      router.push('/onboarding/profile-photo');
     } finally {
       setLoading(false);
     }
-  }, [name, isValid, userId, userPhone, setUserName, router]);
+  }, [firstName, lastName, isValid, userId, userPhone, setUserName, updateOnboardingProfile, router]);
 
   return (
     <View style={styles.container}>
       <SafeAreaView edges={['top', 'bottom']} style={styles.safeArea}>
+        <OnboardingProgressBar step={4} />
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           style={styles.flex}
         >
-          <View style={styles.content}>
+          <ScrollView
+            style={styles.flex}
+            contentContainerStyle={styles.scrollContent}
+            keyboardShouldPersistTaps="handled"
+          >
             <TouchableOpacity
               style={styles.backBtn}
               onPress={() => router.back()}
               hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
             >
-              <ArrowLeft size={24} color={Colors.textPrimary} />
+              <ArrowLeft size={24} color="#FFFFFF" />
             </TouchableOpacity>
 
-            <ProgressDots active={2} />
-
-            <Text style={styles.title}>What's your name?</Text>
+            <Text style={styles.title}>What should we{'\n'}call you?</Text>
             <Text style={styles.subtitle}>
-              This is how your guardian will know it's you.
+              Your guardian will see this when you activate Safely.
             </Text>
 
-            <TextInput
-              style={styles.input}
-              value={name}
-              onChangeText={setName}
-              placeholder="First name"
-              placeholderTextColor={Colors.textMuted}
-              autoCapitalize="words"
-              autoFocus
-              autoCorrect={false}
-              testID="name-input"
-            />
-          </View>
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>FIRST NAME</Text>
+              <TextInput
+                style={styles.input}
+                value={firstName}
+                onChangeText={setFirstName}
+                placeholder="First name"
+                placeholderTextColor="rgba(255,255,255,0.25)"
+                autoCapitalize="words"
+                autoFocus
+                autoCorrect={false}
+                testID="first-name-input"
+              />
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>LAST NAME</Text>
+              <TextInput
+                style={styles.input}
+                value={lastName}
+                onChangeText={setLastName}
+                placeholder="Last name"
+                placeholderTextColor="rgba(255,255,255,0.25)"
+                autoCapitalize="words"
+                autoCorrect={false}
+                testID="last-name-input"
+              />
+            </View>
+          </ScrollView>
 
           <View style={styles.bottomSection}>
             <TouchableOpacity
               style={[styles.button, (!isValid || loading) && styles.buttonDisabled]}
               onPress={handleContinue}
-              activeOpacity={0.8}
+              activeOpacity={0.85}
               disabled={!isValid || loading}
               testID="name-continue-btn"
             >
               {loading ? (
-                <ActivityIndicator color={Colors.textPrimary} />
+                <ActivityIndicator color="#0A0A0A" />
               ) : (
                 <Text style={[styles.buttonText, !isValid && styles.buttonTextDisabled]}>
                   Continue
@@ -134,7 +149,7 @@ export default function NameScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: '#0A0A0A',
   },
   safeArea: {
     flex: 1,
@@ -142,44 +157,50 @@ const styles = StyleSheet.create({
   flex: {
     flex: 1,
   },
-  content: {
-    flex: 1,
+  scrollContent: {
     paddingHorizontal: 24,
-    paddingTop: 12,
+    paddingTop: 4,
   },
   backBtn: {
     width: 40,
     height: 40,
     justifyContent: 'center',
-    marginBottom: 16,
+    marginBottom: 24,
   },
   title: {
     fontFamily: fonts.display,
-    fontSize: 26,
-    color: Colors.textPrimary,
+    fontSize: 28,
+    color: '#FFFFFF',
     marginBottom: 8,
+    lineHeight: 36,
   },
   subtitle: {
     fontFamily: fonts.body,
-    fontSize: 14,
-    color: '#8A8A8A',
+    fontSize: 15,
+    color: 'rgba(255,255,255,0.5)',
     marginBottom: 32,
+    lineHeight: 22,
+  },
+  inputGroup: {
+    marginBottom: 20,
+  },
+  label: {
+    fontSize: 11,
+    fontFamily: fonts.bodySemiBold,
+    color: 'rgba(255,255,255,0.35)',
+    letterSpacing: 1.2,
+    marginBottom: 8,
   },
   input: {
     height: 56,
     borderRadius: 16,
-    backgroundColor: Colors.background,
-    borderWidth: 0.5,
-    borderColor: Colors.border,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.12)',
     paddingHorizontal: 16,
-    fontSize: 18,
+    fontSize: 17,
     fontFamily: fonts.body,
-    color: Colors.textPrimary,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 3,
+    color: '#FFFFFF',
   },
   bottomSection: {
     paddingHorizontal: 24,
@@ -188,19 +209,19 @@ const styles = StyleSheet.create({
   button: {
     backgroundColor: Colors.green,
     height: 56,
-    borderRadius: 16,
+    borderRadius: 28,
     justifyContent: 'center',
     alignItems: 'center',
   },
   buttonDisabled: {
-    backgroundColor: Colors.border,
+    backgroundColor: 'rgba(255,255,255,0.08)',
   },
   buttonText: {
     fontFamily: fonts.bodyBold,
     fontSize: 17,
-    color: Colors.textPrimary,
+    color: '#0A0A0A',
   },
   buttonTextDisabled: {
-    color: Colors.textMuted,
+    color: 'rgba(255,255,255,0.25)',
   },
 });

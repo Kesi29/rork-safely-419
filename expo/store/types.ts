@@ -47,3 +47,15 @@ export interface SessionHistory {
   guardianName: string;
   timestamp: number;
 }
+
+export interface OnboardingProfile {
+  firstName: string;
+  lastName: string;
+  avatarUrl: string | null;
+  guardianName: string;
+  guardianPhone: string;
+  emergencyName: string;
+  emergencyPhone: string;
+  onboardingCompleted: boolean;
+  onboardingStep: number;
+}

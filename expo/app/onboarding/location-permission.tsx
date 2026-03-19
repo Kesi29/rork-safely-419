@@ -2,19 +2,22 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { MapPin, ChevronLeft, Check } from 'lucide-react-native';
+import { ArrowLeft, MapPin, Check } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { fonts } from '@/constants/typography';
 import { requestLocationPermissions } from '@/hooks/useBackgroundLocation';
+import { useSafelyStore } from '@/store';
+import OnboardingProgressBar from '@/components/OnboardingProgressBar';
 
 const bullets = [
-  'Only active when Safely is ON',
-  'Shared only with your chosen guardian',
-  'Deleted automatically when you arrive home',
+  { text: 'Only active when YOU turn it on', key: 'active' },
+  { text: 'Automatically stops when you arrive home', key: 'stops' },
+  { text: 'Your data is never sold', key: 'sold' },
 ];
 
 export default function LocationPermissionScreen() {
   const router = useRouter();
+  const { updateOnboardingProfile } = useSafelyStore();
 
   const handleContinue = async () => {
     try {
@@ -22,7 +25,8 @@ export default function LocationPermissionScreen() {
     } catch (e) {
       console.log('LocationPermission: Error requesting permissions', e);
     }
-    router.push('/onboarding/notification-permission');
+    updateOnboardingProfile({ onboardingStep: 9 });
+    router.push('/onboarding/all-set');
   };
 
   const handleSkip = () => {
@@ -32,7 +36,10 @@ export default function LocationPermissionScreen() {
       [
         {
           text: 'Continue Anyway',
-          onPress: () => router.push('/onboarding/notification-permission'),
+          onPress: () => {
+            updateOnboardingProfile({ onboardingStep: 9 });
+            router.push('/onboarding/all-set');
+          },
         },
         { text: 'Go Back', style: 'cancel' },
       ]
@@ -42,37 +49,43 @@ export default function LocationPermissionScreen() {
   return (
     <View style={styles.container}>
       <SafeAreaView edges={['top', 'bottom']} style={styles.safeArea}>
+        <OnboardingProgressBar step={9} />
         <View style={styles.topBar}>
-          <TouchableOpacity onPress={() => router.back()} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-            <ChevronLeft size={24} color={Colors.textPrimary} />
+          <TouchableOpacity
+            onPress={() => router.back()}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <ArrowLeft size={24} color="#FFFFFF" />
           </TouchableOpacity>
         </View>
 
         <View style={styles.content}>
           <View style={styles.iconWrapper}>
-            <MapPin size={64} color={Colors.green} strokeWidth={1.5} />
+            <View style={styles.iconCircle}>
+              <MapPin size={36} color={Colors.green} strokeWidth={1.5} />
+            </View>
           </View>
 
-          <Text style={styles.title}>Allow location access</Text>
+          <Text style={styles.title}>Safely needs{'\n'}your location</Text>
           <Text style={styles.subtitle}>
-            Safely uses your location to keep your guardian informed during your journey home.
+            Your location is only shared with your guardian while Safely is active. We never track you in the background without your permission.
           </Text>
 
           <View style={styles.bullets}>
-            {bullets.map((text) => (
-              <View key={text} style={styles.bulletRow}>
+            {bullets.map((item) => (
+              <View key={item.key} style={styles.bulletRow}>
                 <View style={styles.checkCircle}>
                   <Check size={14} color={Colors.green} />
                 </View>
-                <Text style={styles.bulletText}>{text}</Text>
+                <Text style={styles.bulletText}>{item.text}</Text>
               </View>
             ))}
           </View>
         </View>
 
         <View style={styles.bottomSection}>
-          <TouchableOpacity style={styles.button} onPress={handleContinue} activeOpacity={0.8}>
-            <Text style={styles.buttonText}>Continue</Text>
+          <TouchableOpacity style={styles.button} onPress={handleContinue} activeOpacity={0.85}>
+            <Text style={styles.buttonText}>Enable Location</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.skipBtn} onPress={handleSkip} activeOpacity={0.6}>
             <Text style={styles.skipText}>Not now</Text>
@@ -86,38 +99,47 @@ export default function LocationPermissionScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: '#0A0A0A',
   },
   safeArea: {
     flex: 1,
   },
   topBar: {
-    paddingHorizontal: 16,
+    paddingHorizontal: 24,
     paddingVertical: 8,
   },
   content: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 40,
+    paddingHorizontal: 36,
   },
   iconWrapper: {
     marginBottom: 32,
   },
+  iconCircle: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: 'rgba(24,165,125,0.12)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   title: {
     fontFamily: fonts.display,
-    fontSize: 26,
-    color: Colors.textPrimary,
+    fontSize: 28,
+    color: '#FFFFFF',
     textAlign: 'center',
     marginBottom: 12,
+    lineHeight: 36,
   },
   subtitle: {
     fontFamily: fonts.body,
     fontSize: 15,
-    color: Colors.textSecondary,
+    color: 'rgba(255,255,255,0.5)',
     textAlign: 'center',
     lineHeight: 22,
-    marginBottom: 32,
+    marginBottom: 36,
   },
   bullets: {
     alignSelf: 'stretch',
@@ -132,14 +154,14 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: Colors.greenLight,
+    backgroundColor: 'rgba(24,165,125,0.12)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   bulletText: {
     fontFamily: fonts.body,
     fontSize: 15,
-    color: Colors.textPrimary,
+    color: 'rgba(255,255,255,0.75)',
     flex: 1,
   },
   bottomSection: {
@@ -149,23 +171,24 @@ const styles = StyleSheet.create({
   button: {
     backgroundColor: Colors.green,
     height: 56,
-    borderRadius: 16,
+    borderRadius: 28,
     justifyContent: 'center',
     alignItems: 'center',
   },
   buttonText: {
     fontFamily: fonts.bodyBold,
     fontSize: 17,
-    color: Colors.textPrimary,
+    color: '#0A0A0A',
   },
   skipBtn: {
-    height: 44,
+    height: 48,
     justifyContent: 'center',
     alignItems: 'center',
     marginTop: 4,
   },
   skipText: {
     fontSize: 14,
-    color: Colors.textSecondary,
+    fontFamily: fonts.body,
+    color: 'rgba(255,255,255,0.4)',
   },
 });
