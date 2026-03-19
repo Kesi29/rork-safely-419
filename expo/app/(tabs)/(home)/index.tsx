@@ -28,10 +28,13 @@ import Avatar from '@/components/Avatar';
 import Card from '@/components/Card';
 import { api } from '@/constants/api';
 import { supabase } from '@/lib/supabase';
+import * as Crypto from 'expo-crypto';
 import { persistActiveSession } from '@/hooks/useBackgroundLocation';
 import { startBackgroundTracking, registerHomeGeofence } from '@/hooks/useBackgroundLocation';
 import { scheduleLocalNotification } from '@/hooks/useNotifications';
 import EventWelcomeSheet from '@/components/EventWelcomeSheet';
+
+
 
 const ORB_SIZE = 140;
 const _SCREEN_WIDTH = Dimensions.get('window').width;
@@ -78,6 +81,7 @@ export default function HomeScreen() {
     setCurrentCoords,
     userId,
     setActiveSessionId,
+    setActiveTrackingToken,
     showEventWelcome,
     clearEventWelcome,
   } = useSafelyStore();
@@ -369,9 +373,24 @@ export default function HomeScreen() {
       return;
     }
 
+    const guardianEmail = primaryGuardian?.email;
+    if (!guardianEmail) {
+      Alert.alert(
+        'Guardian Email Missing',
+        "Add your guardian's email to send them your tracking link",
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Add Email', onPress: () => router.push('/(tabs)/guardian') },
+        ]
+      );
+      return;
+    }
+
     const eventName = connectedEvents[0]?.name ?? null;
-    const sessionId = `session-${Date.now()}`;
+    const sessionId = Crypto.randomUUID();
+    const trackingToken = Crypto.randomUUID();
     setActiveSessionId(sessionId);
+    setActiveTrackingToken(trackingToken);
     startSession(selectedEta, eventName);
     setShowEtaModal(false);
 
@@ -379,7 +398,7 @@ export default function HomeScreen() {
       await persistActiveSession({
         sessionId,
         userName: useSafelyStore.getState().userName,
-        guardianPhone: primaryGuardian?.phone ?? '',
+        guardianEmail: primaryGuardian?.email ?? '',
         guardianName: primaryGuardian?.name ?? '',
         eta: etaDate.getTime(),
         homeLatitude: homeAddress.coords.latitude,
@@ -424,7 +443,8 @@ export default function HomeScreen() {
       void api.startSession({
         userId,
         sessionId,
-        guardianPhone: primaryGuardian?.phone,
+        trackingToken,
+        guardianEmail,
         guardianName: primaryGuardian?.name,
         userName: useSafelyStore.getState().userName,
         eventName,
@@ -439,10 +459,122 @@ export default function HomeScreen() {
         [{ text: 'OK' }]
       );
     }
+
+    try {
+      console.log('=== SUPABASE SESSION SAVE START ===');
+      console.log('Step 1: Checking Supabase client exists:', !!supabase);
+      console.log('Step 2: Supabase URL from lib:', process.env.EXPO_PUBLIC_SUPABASE_URL);
+      
+      const { data: authCheck } = await supabase.auth.getSession();
+      console.log('Step 3: Auth session exists:', !!authCheck?.session);
+      console.log('Step 3b: Auth user ID:', authCheck?.session?.user?.id ?? 'NO AUTH USER');
+      console.log('Step 4: userId from store:', userId);
+      console.log('Step 4b: userId type:', typeof userId);
+      console.log('Step 4c: userId is null?', userId === null);
+      console.log('Step 4d: userId starts with local-?', userId?.startsWith('local-'));
+
+      const effectiveUserId = authCheck?.session?.user?.id ?? userId ?? 'anonymous-' + Date.now();
+      console.log('Step 5: Using effectiveUserId:', effectiveUserId);
+
+      const sessionPayload = {
+        id: sessionId,
+        user_id: effectiveUserId,
+        tracking_token: trackingToken,
+        status: 'active',
+        activated_at: new Date().toISOString(),
+        event_name: eventName,
+        home_lat: homeAddress.coords?.latitude ?? null,
+        home_lng: homeAddress.coords?.longitude ?? null,
+      };
+      console.log('Step 6: Session payload:', JSON.stringify(sessionPayload));
+      
+      const insertResult = await supabase.from('sessions').insert(sessionPayload).select();
+      console.log('Step 7: INSERT full result:', JSON.stringify(insertResult));
+      console.log('Step 7b: INSERT data:', JSON.stringify(insertResult.data));
+      console.log('Step 7c: INSERT error:', JSON.stringify(insertResult.error));
+      console.log('Step 7d: INSERT status:', insertResult.status);
+      console.log('Step 7e: INSERT statusText:', insertResult.statusText);
+      
+      if (insertResult.error) {
+        console.log('SUPABASE SESSION INSERT FAILED:', insertResult.error.message);
+        console.log('Error code:', insertResult.error.code);
+        console.log('Error details:', insertResult.error.details);
+        console.log('Error hint:', insertResult.error.hint);
+      } else {
+        console.log('SUPABASE SESSION SAVED SUCCESSFULLY:', sessionId);
+      }
+      console.log('=== SUPABASE SESSION SAVE END ===');
+    } catch (e) {
+      console.log('SUPABASE SESSION INSERT EXCEPTION:', e);
+      console.log('Exception message:', (e as Error)?.message);
+      console.log('Exception stack:', (e as Error)?.stack);
+    }
+
+    try {
+      console.log('=== SUPABASE USER SAVE START ===');
+      const { data: authCheck2 } = await supabase.auth.getSession();
+      const effectiveUserId2 = authCheck2?.session?.user?.id ?? userId ?? 'anonymous-' + Date.now();
+      const fullName = useSafelyStore.getState().userName;
+      const userPhone = useSafelyStore.getState().userPhone;
+      const homeAddr = useSafelyStore.getState().homeAddress;
+      const userPayload = {
+        id: effectiveUserId2,
+        name: fullName,
+        phone: userPhone,
+        home_address: homeAddr?.label ?? null,
+        home_latitude: homeAddr?.coords?.latitude ?? null,
+        home_longitude: homeAddr?.coords?.longitude ?? null,
+      };
+      console.log('User payload:', JSON.stringify(userPayload));
+      const userResult = await supabase.from('users').upsert(userPayload, { onConflict: 'id' }).select();
+      console.log('User upsert result:', JSON.stringify(userResult));
+      console.log('User upsert data:', JSON.stringify(userResult.data));
+      console.log('User upsert error:', JSON.stringify(userResult.error));
+      if (userResult.error) {
+        console.log('USER SAVE FAILED:', userResult.error.message, userResult.error.code, userResult.error.hint);
+      } else {
+        console.log('USER SAVED SUCCESSFULLY');
+      }
+      console.log('=== SUPABASE USER SAVE END ===');
+    } catch (e) {
+      console.log('SUPABASE USER SAVE EXCEPTION:', e);
+    }
+
+    try {
+      const resendApiKey = process.env.EXPO_PUBLIC_RESEND_API_KEY || 're_XNmCZK7a_PpAmgxydqFow6gPQuJV97FGm';
+      if (resendApiKey && guardianEmail) {
+        const firstName = useSafelyStore.getState().userName.split(' ')[0];
+        console.log('HomeScreen: Sending guardian email via Resend to', guardianEmail);
+        const emailRes = await fetch('https://api.resend.com/emails', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${resendApiKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            from: 'Safely <onboarding@resend.dev>',
+            to: guardianEmail,
+            subject: `${firstName} has activated Safely`,
+            html: `
+              <h2>${firstName} is heading home safely</h2>
+              <p>They activated Safely and expect to be home by ${etaDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}.</p>
+              <p>Watch their live location here:</p>
+              <a href="https://safely-web-eight.vercel.app/track/${trackingToken}">Track ${firstName}</a>
+            `,
+          }),
+        });
+        const emailData = await emailRes.json();
+        console.log('HomeScreen: Resend email response', emailData);
+      } else {
+        console.log('HomeScreen: Skipping Resend email — missing API key or guardian email');
+      }
+    } catch (e) {
+      console.log('HomeScreen: Resend email error', e);
+    }
     setTimeout(() => {
       router.push('/tracking/active');
     }, 50);
-  }, [selectedEta, connectedEvents, startSession, router, userId, setActiveSessionId, primaryGuardian, homeAddress]);
+  }, [selectedEta, connectedEvents, startSession, router, userId, setActiveSessionId, setActiveTrackingToken, primaryGuardian, homeAddress]);
 
   const mapRegion = currentCoords ? {
     latitude: currentCoords.latitude,
@@ -641,7 +773,7 @@ export default function HomeScreen() {
               </Text>
             </View>
             <Text style={styles.guardianSheetTitle}>
-              {primaryGuardian?.name ?? 'Your guardian'} will receive a confirmation text shortly
+              {primaryGuardian?.name ?? 'Your guardian'} will receive a confirmation email shortly
             </Text>
             <Text style={styles.guardianSheetDesc}>
               Once they confirm, you'll see a green checkmark on their card
