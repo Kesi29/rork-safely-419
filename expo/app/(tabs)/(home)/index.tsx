@@ -28,6 +28,7 @@ import Avatar from '@/components/Avatar';
 import Card from '@/components/Card';
 import { api } from '@/constants/api';
 import { supabase } from '@/lib/supabase';
+import * as Crypto from 'expo-crypto';
 
 import { persistActiveSession } from '@/hooks/useBackgroundLocation';
 import { startBackgroundTracking, registerHomeGeofence } from '@/hooks/useBackgroundLocation';

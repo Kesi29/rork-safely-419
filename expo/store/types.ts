@@ -6,6 +6,7 @@ export interface Guardian {
   id: string;
   name: string;
   phone: string;
+  email?: string;
   relationship: Relationship;
   isPrimary: boolean;
   avatarColor: string;
