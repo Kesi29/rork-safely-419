@@ -28,7 +28,7 @@ import Avatar from '@/components/Avatar';
 import Card from '@/components/Card';
 import { api } from '@/constants/api';
 import { supabase } from '@/lib/supabase';
-import * as Crypto from 'expo-crypto';
+
 import { persistActiveSession } from '@/hooks/useBackgroundLocation';
 import { startBackgroundTracking, registerHomeGeofence } from '@/hooks/useBackgroundLocation';
 import { scheduleLocalNotification } from '@/hooks/useNotifications';
@@ -388,7 +388,7 @@ export default function HomeScreen() {
 
     const eventName = connectedEvents[0]?.name ?? null;
     const sessionId = Crypto.randomUUID();
-    const trackingToken = Crypto.randomUUID();
+    const trackingToken = require('uuid').v4();
     setActiveSessionId(sessionId);
     setActiveTrackingToken(trackingToken);
     startSession(selectedEta, eventName);
