@@ -390,6 +390,9 @@ export default function HomeScreen() {
     const eventName = connectedEvents[0]?.name ?? null;
     const sessionId = Crypto.randomUUID();
     const trackingToken = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => { const r = Math.random() * 16 | 0; return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16); });
+
+    const { data: authData } = await supabase.auth.getSession();
+    const resolvedUserId = userId || authData?.session?.user?.id || 'anonymous-' + Date.now();
     setActiveSessionId(sessionId);
     setActiveTrackingToken(trackingToken);
     startSession(selectedEta, eventName);
@@ -442,7 +445,7 @@ export default function HomeScreen() {
 
     try {
       void api.startSession({
-        userId,
+        userId: resolvedUserId,
         sessionId,
         trackingToken,
         guardianEmail,
@@ -466,20 +469,14 @@ export default function HomeScreen() {
       console.log('Step 1: Checking Supabase client exists:', !!supabase);
       console.log('Step 2: Supabase URL from lib:', process.env.EXPO_PUBLIC_SUPABASE_URL);
       
-      const { data: authCheck } = await supabase.auth.getSession();
-      console.log('Step 3: Auth session exists:', !!authCheck?.session);
-      console.log('Step 3b: Auth user ID:', authCheck?.session?.user?.id ?? 'NO AUTH USER');
+      console.log('Step 3: Auth session exists:', !!authData?.session);
+      console.log('Step 3b: Auth user ID:', authData?.session?.user?.id ?? 'NO AUTH USER');
       console.log('Step 4: userId from store:', userId);
-      console.log('Step 4b: userId type:', typeof userId);
-      console.log('Step 4c: userId is null?', userId === null);
-      console.log('Step 4d: userId starts with local-?', userId?.startsWith('local-'));
-
-      const effectiveUserId = authCheck?.session?.user?.id ?? userId ?? 'anonymous-' + Date.now();
-      console.log('Step 5: Using effectiveUserId:', effectiveUserId);
+      console.log('Step 5: Using resolvedUserId:', resolvedUserId);
 
       const sessionPayload = {
         id: sessionId,
-        user_id: effectiveUserId,
+        user_id: resolvedUserId,
         tracking_token: trackingToken,
         status: 'active',
         activated_at: new Date().toISOString(),
@@ -513,8 +510,7 @@ export default function HomeScreen() {
 
     try {
       console.log('=== SUPABASE USER SAVE START ===');
-      const { data: authCheck2 } = await supabase.auth.getSession();
-      const effectiveUserId2 = authCheck2?.session?.user?.id ?? userId ?? 'anonymous-' + Date.now();
+      const effectiveUserId2 = resolvedUserId;
       const fullName = useSafelyStore.getState().userName;
       const userPhone = useSafelyStore.getState().userPhone;
       const homeAddr = useSafelyStore.getState().homeAddress;
