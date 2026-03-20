@@ -94,6 +94,17 @@ export default function RootLayout() {
       if (!url) return;
       console.log('RootLayout: Deep link received:', url);
       try {
+        if (url.includes('auth/callback') || url.includes('access_token')) {
+          console.log('RootLayout: Auth callback detected');
+          const { data } = await supabase.auth.getSession();
+          if (data.session) {
+            console.log('RootLayout: Auth session found after callback, user:', data.session.user.id);
+            setUserId(data.session.user.id);
+            router.replace('/onboarding/name');
+          }
+          return;
+        }
+
         const parsed = Linking.parse(url);
         if (parsed.path === 'event' || url.includes('safely://event')) {
           const params = parsed.queryParams;
@@ -124,7 +135,7 @@ export default function RootLayout() {
 
     const sub = Linking.addEventListener('url', ({ url }) => handleDeepLink(url));
     return () => sub.remove();
-  }, []);
+  }, [router, setUserId]);
 
   useEffect(() => {
     if (fontsLoaded || fontError) {

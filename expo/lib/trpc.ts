@@ -7,12 +7,7 @@ import type { AppRouter } from "@/backend/trpc/app-router";
 export const trpc = createTRPCReact<AppRouter>();
 
 const getBaseUrl = () => {
-
-  if (!url) {
-    throw new Error(
-    );
-  }
-
+  const url = process.env.EXPO_PUBLIC_RORK_API_BASE_URL || 'https://safely-backend.vercel.app';
   return url;
 };
 

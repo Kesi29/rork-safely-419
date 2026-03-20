@@ -19,8 +19,8 @@ import Avatar from '@/components/Avatar';
 import Card from '@/components/Card';
 import SOSButton from '@/components/SOSButton';
 import GuardianToast from '@/components/GuardianToast';
-import { sendGuardianSMS, formatGuardianMessage } from '@/utils/sms';
-import { api } from '@/constants/api';
+import { CONFIG } from '@/lib/config';
+import { supabase } from '@/lib/supabase';
 import { stopAllTracking, clearActiveSession } from '@/hooks/useBackgroundLocation';
 import { cancelNotification } from '@/hooks/useNotifications';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -48,9 +48,17 @@ export default function ActiveTrackingScreen() {
     setTrackingStatus,
     setCurrentCoords,
     endSession,
-    userId,
     activeSessionId,
   } = useSafelyStore();
+
+  useEffect(() => {
+    if (!activeSessionId) {
+      console.log('ActiveTracking: No sessionId, redirecting to home');
+      router.replace('/(tabs)/(home)');
+    }
+  }, [activeSessionId, router]);
+
+  if (!activeSessionId) return null;
 
   const [minutesLeft, setMinutesLeft] = useState(0);
   const [secondsLeft, setSecondsLeft] = useState(0);
@@ -64,7 +72,6 @@ export default function ActiveTrackingScreen() {
 
   const dotOpacity = useRef(new Animated.Value(1)).current;
   const mapRef = useRef<any>(null);
-  const smsSentRef = useRef(false);
 
   useEffect(() => {
     Animated.loop(
@@ -74,33 +81,6 @@ export default function ActiveTrackingScreen() {
       ])
     ).start();
   }, [dotOpacity]);
-
-  useEffect(() => {
-    if (!smsSentRef.current && primaryGuardian && primaryGuardian.phone) {
-      smsSentRef.current = true;
-      const msg = formatGuardianMessage('started', {
-        userName,
-        guardianName: primaryGuardian.name,
-        eventName: session.eventName ?? undefined,
-      });
-      console.log('ActiveTracking: Sending start SMS to', primaryGuardian.phone);
-      void sendGuardianSMS(primaryGuardian.phone, msg);
-      try {
-        void api.startSession({
-          userId,
-          sessionId: activeSessionId,
-          guardianPhone: primaryGuardian.phone,
-          guardianName: primaryGuardian.name,
-          userName,
-          eventName: session.eventName,
-          etaMinutes: session.etaMinutes,
-          homeCoords: homeAddress.coords,
-        });
-      } catch (e) {
-        console.log('ActiveTracking: API startSession error', e);
-      }
-    }
-  }, [primaryGuardian, userName, session.eventName, userId, activeSessionId, homeAddress.coords, session.etaMinutes]);
 
   useEffect(() => {
     let sub: Location.LocationSubscription | null = null;
@@ -168,15 +148,6 @@ export default function ActiveTrackingScreen() {
               longitude: location.coords.longitude,
             };
             setCurrentCoords(newCoords);
-            try {
-              void api.updateLocation({
-                userId,
-                sessionId: activeSessionId,
-                coords: newCoords,
-              });
-            } catch (e) {
-              console.log('ActiveTracking: API updateLocation error', e);
-            }
           }
         );
       } catch (e) {
@@ -188,7 +159,7 @@ export default function ActiveTrackingScreen() {
     return () => {
       if (sub) sub.remove();
     };
-  }, [setCurrentCoords, userId, activeSessionId]);
+  }, [setCurrentCoords]);
 
   useEffect(() => {
     if (Platform.OS !== 'web' && currentCoords && homeAddress.coords && mapRef.current) {
@@ -206,6 +177,55 @@ export default function ActiveTrackingScreen() {
       }
     }
   }, [currentCoords, homeAddress.coords]);
+
+  const sendArrivalEmail = useCallback(async () => {
+    const guardianEmail = primaryGuardian?.email;
+    if (!guardianEmail) {
+      console.log('ActiveTracking: No guardian email, skipping arrival email');
+      return;
+    }
+    try {
+      console.log('ActiveTracking: Sending arrival email to', guardianEmail);
+      await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${CONFIG.RESEND_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          from: 'Safely <onboarding@resend.dev>',
+          to: guardianEmail,
+          subject: `${userName} made it home safely \u2713`,
+          html: `
+            <div style="font-family:system-ui;max-width:480px;margin:0 auto;padding:32px;">
+              <h2 style="color:#00E87A;">${userName} made it home safely! \uD83C\uDF89</h2>
+              <p style="color:#8A8A8A;">They arrived at ${new Date().toLocaleTimeString()}</p>
+              <p style="color:#BBBBBB;font-size:12px;margin-top:32px;">Powered by Safely</p>
+            </div>
+          `,
+        }),
+      });
+      console.log('ActiveTracking: Arrival email sent');
+    } catch (e) {
+      console.log('ActiveTracking: Arrival email error', e);
+    }
+  }, [primaryGuardian, userName]);
+
+  const updateSessionArrived = useCallback(async () => {
+    if (!activeSessionId) return;
+    try {
+      await supabase
+        .from('sessions')
+        .update({
+          status: 'arrived',
+          arrived_at: new Date().toISOString(),
+        })
+        .eq('id', activeSessionId);
+      console.log('ActiveTracking: Session updated to arrived in Supabase');
+    } catch (e) {
+      console.log('ActiveTracking: Supabase session update error', e);
+    }
+  }, [activeSessionId]);
 
   useEffect(() => {
     if (!currentCoords || !homeAddress.coords || trackingStatus !== 'active') return;
@@ -234,24 +254,15 @@ export default function ActiveTrackingScreen() {
       console.log('ActiveTracking: Within 150m of home, triggering arrival');
       hasNavigatedAway.current = true;
       setTrackingStatus('arrived');
-      setToastMessage(`${userName} arrived home safely at ${new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })} 🏠`);
+      setToastMessage(`${userName} arrived home safely at ${new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })} \uD83C\uDFE0`);
       setShowToast(true);
-      try {
-        void api.arrive({
-          userId,
-          sessionId: activeSessionId,
-          guardianPhone: primaryGuardian?.phone,
-          guardianName: primaryGuardian?.name,
-          userName,
-        });
-      } catch (e) {
-        console.log('ActiveTracking: API arrive error', e);
-      }
+      void sendArrivalEmail();
+      void updateSessionArrived();
       setTimeout(() => {
         router.replace('/tracking/arrived');
       }, 500);
     }
-  }, [currentCoords, homeAddress.coords, trackingStatus, setTrackingStatus, userName, router, hasGpsLock, trackingStartTime, initialCoords, userId, activeSessionId, primaryGuardian]);
+  }, [currentCoords, homeAddress.coords, trackingStatus, setTrackingStatus, userName, router, hasGpsLock, trackingStartTime, initialCoords, sendArrivalEmail, updateSessionArrived]);
 
   useEffect(() => {
     if (!session.eta) return;
@@ -271,7 +282,7 @@ export default function ActiveTrackingScreen() {
       const pct = totalMins > 0 ? elapsed / totalMins : 0;
 
       if (totalSecs <= 0) {
-        setStatusMessage("You should be home by now…");
+        setStatusMessage("You should be home by now\u2026");
         if (trackingStatus === 'active') {
           const lateThreshold = etaTime + 15 * 60000;
           if (now > lateThreshold) {
@@ -280,11 +291,11 @@ export default function ActiveTrackingScreen() {
           }
         }
       } else if (mins < 10) {
-        setStatusMessage("Nearly home! 🏃");
+        setStatusMessage("Nearly home! \uD83C\uDFC3");
       } else if (pct > 0.5) {
         setStatusMessage("Keep going, almost there!");
       } else {
-        setStatusMessage("You're on your way 🏠");
+        setStatusMessage("You're on your way \uD83C\uDFE0");
       }
     }, 1000);
 
@@ -307,24 +318,15 @@ export default function ActiveTrackingScreen() {
 
   const handleImHome = useCallback(() => {
     setTrackingStatus('arrived');
-    setToastMessage(`${userName} arrived home safely at ${new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })} 🏠`);
+    setToastMessage(`${userName} arrived home safely at ${new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })} \uD83C\uDFE0`);
     setShowToast(true);
     void cleanupTracking();
-    try {
-      void api.arrive({
-        userId,
-        sessionId: activeSessionId,
-        guardianPhone: primaryGuardian?.phone,
-        guardianName: primaryGuardian?.name,
-        userName,
-      });
-    } catch (e) {
-      console.log('ActiveTracking: API arrive error (manual)', e);
-    }
+    void sendArrivalEmail();
+    void updateSessionArrived();
     setTimeout(() => {
       router.replace('/tracking/arrived');
     }, 500);
-  }, [setTrackingStatus, userName, router, userId, activeSessionId, primaryGuardian, cleanupTracking]);
+  }, [setTrackingStatus, userName, router, cleanupTracking, sendArrivalEmail, updateSessionArrived]);
 
   const handleStayingOver = useCallback(() => {
     Alert.alert(
@@ -336,21 +338,11 @@ export default function ActiveTrackingScreen() {
           text: 'Confirm',
           onPress: () => {
             setTrackingStatus('arrived');
-            setToastMessage(`${userName} is staying over safely ✓`);
+            setToastMessage(`${userName} is staying over safely \u2713`);
             setShowToast(true);
             void cleanupTracking();
-            try {
-              void api.arrive({
-                userId,
-                sessionId: activeSessionId,
-                guardianPhone: primaryGuardian?.phone,
-                guardianName: primaryGuardian?.name,
-                userName,
-                stayingOver: true,
-              });
-            } catch (e) {
-              console.log('ActiveTracking: API arrive error (staying)', e);
-            }
+            void sendArrivalEmail();
+            void updateSessionArrived();
             setTimeout(() => {
               router.replace('/tracking/arrived');
             }, 500);
@@ -358,7 +350,7 @@ export default function ActiveTrackingScreen() {
         },
       ]
     );
-  }, [primaryGuardian, setTrackingStatus, userName, router, userId, activeSessionId, cleanupTracking]);
+  }, [primaryGuardian, setTrackingStatus, userName, router, cleanupTracking, sendArrivalEmail, updateSessionArrived]);
 
   const handleClose = useCallback(() => {
     Alert.alert(
@@ -406,7 +398,7 @@ export default function ActiveTrackingScreen() {
             <SafeMarker coordinate={homeAddress.coords} anchor={{ x: 0.5, y: 0.5 }}>
               <View style={styles.markerContainer}>
                 <View style={styles.homeMarker}>
-                  <Text style={styles.homeMarkerIcon}>🔒</Text>
+                  <Text style={styles.homeMarkerIcon}>{'\uD83D\uDD12'}</Text>
                 </View>
                 <Text style={styles.markerLabel}>Home</Text>
               </View>
@@ -454,7 +446,7 @@ export default function ActiveTrackingScreen() {
                 />
                 <View style={styles.guardianPillText}>
                   <Text style={styles.guardianPillName}>{primaryGuardian.name}</Text>
-                  <Text style={styles.guardianPillStatus}>Watching over you ✓</Text>
+                  <Text style={styles.guardianPillStatus}>Watching over you {'\u2713'}</Text>
                 </View>
               </View>
             </Card>

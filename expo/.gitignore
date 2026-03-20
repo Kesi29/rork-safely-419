@@ -44,3 +44,4 @@ core
 node_modules
 .expo
 bun.lock
+node_modules/@rork-ai
