@@ -42,6 +42,7 @@ const initialState = {
   hasOnboarded: false,
   isInitialized: false,
   activeSessionId: null as string | null,
+  activeTrackingToken: null as string | null,
   showEventWelcome: null as ConnectedEvent | null,
   onboardingProfile: {
     firstName: '',
@@ -116,6 +117,8 @@ export const useSafelyStore = create(
     },
 
     setActiveSessionId: (id: string | null) => set({ activeSessionId: id }),
+
+    setActiveTrackingToken: (token: string | null) => set({ activeTrackingToken: token }),
 
     setTrackingStatus: (status: TrackingStatus) => set({ trackingStatus: status }),
 

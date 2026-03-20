@@ -20,6 +20,7 @@ import SafeMap, { SafeMarker } from '@/components/SafeMap';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Location from 'expo-location';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Crypto from 'expo-crypto';
 import Colors from '@/constants/colors';
 import { fonts } from '@/constants/typography';
 import * as Battery from 'expo-battery';
@@ -388,7 +389,7 @@ export default function HomeScreen() {
 
     const eventName = connectedEvents[0]?.name ?? null;
     const sessionId = Crypto.randomUUID();
-    const trackingToken = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => { const r = Math.random() * 16 | 0; return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16); });
+    const trackingToken = Crypto.randomUUID();
     setActiveSessionId(sessionId);
     setActiveTrackingToken(trackingToken);
     startSession(selectedEta, eventName);
