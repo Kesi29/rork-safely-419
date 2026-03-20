@@ -80,7 +80,6 @@
       "router": {
         "origin": "https://rork.com/"
       },
-      "googlePlacesApiKey": "EXPO_PUBLIC_GOOGLE_PLACES_API_KEY",
       "eas": {
         "projectId": "ea7d5410-d1ee-4ff0-8e9c-c47dccb471af"
       }

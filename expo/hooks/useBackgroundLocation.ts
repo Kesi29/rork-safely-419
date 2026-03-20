@@ -157,8 +157,7 @@ export async function stopAllTracking(): Promise<void> {
 export async function persistActiveSession(session: {
   sessionId: string;
   userName: string;
-  guardianPhone?: string;
-  guardianEmail?: string;
+  guardianPhone: string;
   guardianName: string;
   eta: number;
   homeLatitude: number;
