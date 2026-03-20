@@ -6,15 +6,14 @@ import type { AppRouter } from "@/backend/trpc/app-router";
 
 export const trpc = createTRPCReact<AppRouter>();
 
-const getBaseUrl = () => {
-  const url = process.env.EXPO_PUBLIC_RORK_API_BASE_URL || 'https://safely-backend.vercel.app';
-  return url;
-};
+function getBaseUrl() {
+  return 'https://safely-backend.vercel.app/api';
+}
 
 export const trpcClient = trpc.createClient({
   links: [
     httpLink({
-      url: `${getBaseUrl()}/api/trpc`,
+      url: `${getBaseUrl()}/trpc`,
       transformer: superjson,
     }),
   ],
