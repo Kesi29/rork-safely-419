@@ -36,12 +36,6 @@ import EventWelcomeSheet from '@/components/EventWelcomeSheet';
 
 
 
-const generateUUID = (): string =>
-  'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
-    const r = Math.random() * 16 | 0;
-    return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
-  });
-
 const ORB_SIZE = 140;
 const _SCREEN_WIDTH = Dimensions.get('window').width;
 
@@ -370,14 +364,6 @@ export default function HomeScreen() {
 
   const handleConfirmEta = useCallback(async () => {
     const etaDate = new Date(Date.now() + selectedEta * 60000);
-    if (etaDate.getTime() < Date.now()) {
-      Alert.alert(
-        'Invalid Time',
-        'Your expected arrival time has already passed. Please select a future time.',
-        [{ text: 'OK' }]
-      );
-      return;
-    }
 
     const guardianEmail = primaryGuardian?.email;
     if (!guardianEmail) {
@@ -393,7 +379,7 @@ export default function HomeScreen() {
     }
 
     const eventName = connectedEvents[0]?.name ?? null;
-    const trackingToken = generateUUID();
+    const trackingToken = crypto.randomUUID();
 
     const { data: authData } = await supabase.auth.getSession();
     const resolvedUserId = userId || authData?.session?.user?.id || 'anonymous-' + Date.now();
@@ -465,6 +451,7 @@ export default function HomeScreen() {
         await persistActiveSession({
           sessionId: sessionData.id,
           userName: useSafelyStore.getState().userName,
+          guardianPhone: primaryGuardian?.phone ?? '',
           guardianEmail: primaryGuardian?.email ?? '',
           guardianName: primaryGuardian?.name ?? '',
           eta: etaDate.getTime(),

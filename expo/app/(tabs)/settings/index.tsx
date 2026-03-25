@@ -47,7 +47,7 @@ export default function SettingsScreen() {
     setUserName,
     setHomeAddress,
     setDefaultEtaMinutes,
-    addEvent,
+    addConnectedEvent,
     startSession,
     setTrackingStatus,
     userId,
@@ -101,7 +101,7 @@ export default function SettingsScreen() {
       Alert.alert('Required', 'Event name is required.');
       return;
     }
-    addEvent({
+    addConnectedEvent({
       id: `event-${Date.now()}`,
       name: newEventName.trim(),
       endTime: newEventTime.trim() || '23:00',
@@ -110,7 +110,7 @@ export default function SettingsScreen() {
     setNewEventName('');
     setNewEventTime('');
     setShowAddEvent(false);
-  }, [newEventName, newEventTime, addEvent]);
+  }, [newEventName, newEventTime, addConnectedEvent]);
 
   const simulateJourney = useCallback(() => {
     startSession(2, 'Demo Journey');

@@ -182,12 +182,11 @@ export const useSafelyStore = create(
 
     addGuardian: (guardian: Guardian) => {
       const state = get();
-      const guardians = [...state.guardians, guardian];
-      if (guardian.isPrimary) {
-        guardians.forEach((g) => {
-          if (g.id !== guardian.id) g.isPrimary = false;
-        });
-      }
+      const guardians = guardian.isPrimary
+        ? [...state.guardians, guardian].map((g) =>
+            g.id === guardian.id ? g : { ...g, isPrimary: false }
+          )
+        : [...state.guardians, guardian];
       const primary = guardian.isPrimary ? guardian : state.primaryGuardian;
       set({ guardians, primaryGuardian: primary });
       _persist({ ...get(), guardians, primaryGuardian: primary });
@@ -224,14 +223,6 @@ export const useSafelyStore = create(
     },
 
     addConnectedEvent: (event: ConnectedEvent) => {
-      const state = get();
-      if (state.connectedEvents.some((e) => e.id === event.id)) return;
-      const events = [...state.connectedEvents, event];
-      set({ connectedEvents: events });
-      _persist({ ...get(), connectedEvents: events });
-    },
-
-    addEvent: (event: ConnectedEvent) => {
       const state = get();
       if (state.connectedEvents.some((e) => e.id === event.id)) return;
       const events = [...state.connectedEvents, event];
