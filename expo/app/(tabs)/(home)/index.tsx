@@ -409,8 +409,6 @@ export default function HomeScreen() {
           tracking_token: trackingToken,
           activated_at: new Date().toISOString(),
           event_name: eventName,
-          home_lat: homeAddress.coords?.latitude ?? null,
-          home_lng: homeAddress.coords?.longitude ?? null,
         })
         .select()
         .single();
@@ -428,8 +426,11 @@ export default function HomeScreen() {
           const firstName = useSafelyStore.getState().userName.split(' ')[0];
 
           try {
-            console.log('HomeScreen: Sending guardian email via Resend to', guardianEmail);
-            await fetch('https://api.resend.com/emails', {
+            console.log('Attempting to send email to:', guardianEmail);
+            console.log('Tracking URL:', trackingUrl);
+            console.log('Resend key present:', !!CONFIG.RESEND_KEY);
+            console.log('Resend key length:', CONFIG.RESEND_KEY?.length);
+            const emailRes = await fetch('https://api.resend.com/emails', {
               method: 'POST',
               headers: {
                 'Authorization': `Bearer ${CONFIG.RESEND_KEY}`,
@@ -438,21 +439,14 @@ export default function HomeScreen() {
               body: JSON.stringify({
                 from: 'Safely <onboarding@resend.dev>',
                 to: guardianEmail,
-                subject: `${firstName} has activated Safely \uD83D\uDEE1\uFE0F`,
-                html: `
-                  <div style="font-family:system-ui;max-width:480px;margin:0 auto;padding:32px;">
-                    <h2>${firstName} is heading home</h2>
-                    <p style="color:#8A8A8A;">Watch their live location:</p>
-                    <a href="${trackingUrl}"
-                       style="display:block;background:#00E87A;color:#0A0A0A;padding:16px 24px;border-radius:12px;text-decoration:none;font-weight:bold;text-align:center;margin:24px 0;">
-                      Track ${firstName} Live \u2192
-                    </a>
-                    <p style="color:#BBBBBB;font-size:12px;">Powered by Safely</p>
-                  </div>
-                `,
-              }),
+                subject: `${firstName} has activated Safely`,
+                html: `<h2>${firstName} is heading home</h2>
+                       <a href="${trackingUrl}">Track live →</a>`
+              })
             });
-            console.log('HomeScreen: Guardian email sent');
+            const emailData = await emailRes.json();
+            console.log('Email response status:', emailRes.status);
+            console.log('Email response body:', JSON.stringify(emailData));
           } catch (emailErr) {
             console.log('HomeScreen: Resend email error', emailErr);
           }
