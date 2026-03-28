@@ -36,6 +36,7 @@ export default function GuardianScreen() {
   const [editingGuardian, setEditingGuardian] = useState<Guardian | null>(null);
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
+  const [email, setEmail] = useState('');
   const [relationship, setRelationship] = useState<Relationship>('Friend');
   const [isPrimary, setIsPrimary] = useState(false);
 
@@ -43,6 +44,7 @@ export default function GuardianScreen() {
     setEditingGuardian(null);
     setName('');
     setPhone('');
+    setEmail('');
     setRelationship('Friend');
     setIsPrimary(guardians.length === 0);
     setShowModal(true);
@@ -52,6 +54,7 @@ export default function GuardianScreen() {
     setEditingGuardian(guardian);
     setName(guardian.name);
     setPhone(guardian.phone);
+    setEmail(guardian.email ?? '');
     setRelationship(guardian.relationship);
     setIsPrimary(guardian.isPrimary);
     setShowModal(true);
@@ -63,11 +66,17 @@ export default function GuardianScreen() {
       return;
     }
 
+    if (!email.trim()) {
+      Alert.alert('Required', 'Email address is required so your guardian can receive alerts.');
+      return;
+    }
+
     if (editingGuardian) {
       updateGuardian({
         ...editingGuardian,
         name: name.trim(),
         phone: phone.trim(),
+        email: email.trim(),
         relationship,
         isPrimary,
       });
@@ -76,6 +85,7 @@ export default function GuardianScreen() {
         id: `guardian-${Date.now()}`,
         name: name.trim(),
         phone: phone.trim(),
+        email: email.trim(),
         relationship,
         isPrimary,
         avatarColor: AVATAR_COLORS[guardians.length % AVATAR_COLORS.length],
@@ -93,7 +103,7 @@ export default function GuardianScreen() {
       }
     }
     setShowModal(false);
-  }, [name, phone, relationship, isPrimary, editingGuardian, guardians.length, addGuardian, updateGuardian, userId]);
+  }, [name, phone, email, relationship, isPrimary, editingGuardian, guardians.length, addGuardian, updateGuardian, userId]);
 
   const handleRemove = useCallback((id: string, guardianName: string) => {
     Alert.alert(
@@ -202,6 +212,17 @@ export default function GuardianScreen() {
               keyboardType="phone-pad"
             />
 
+            <Text style={styles.inputLabel}>EMAIL</Text>
+            <TextInput
+              style={styles.input}
+              value={email}
+              onChangeText={setEmail}
+              placeholder="their@email.com"
+              placeholderTextColor={Colors.textMuted}
+              keyboardType="email-address"
+              autoCapitalize="none"
+            />
+
             <Text style={styles.inputLabel}>Relationship</Text>
             <View style={styles.relPicker}>
               {RELATIONSHIPS.map((rel) => (
@@ -232,7 +253,7 @@ export default function GuardianScreen() {
             </TouchableOpacity>
 
             <Text style={styles.consentText}>
-              By adding this guardian you confirm they have consented to receive SMS messages from Safely. Standard messaging rates may apply to your guardian.
+              Your guardian will receive an email when you activate Safely
             </Text>
 
             <TouchableOpacity style={styles.cancelBtn} onPress={() => setShowModal(false)}>
