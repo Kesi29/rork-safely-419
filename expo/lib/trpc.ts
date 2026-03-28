@@ -1,13 +1,16 @@
-import { createTRPCReact } from '@trpc/react-query'
-import { httpBatchLink } from '@trpc/client'
-import type { AppRouter } from '../server/router'
+import { httpLink } from "@trpc/client";
+import { createTRPCReact } from "@trpc/react-query";
+import superjson from "superjson";
 
-export const trpc = createTRPCReact<AppRouter>()
+import type { AppRouter } from "@/backend/trpc/app-router";
+
+export const trpc = createTRPCReact<AppRouter>();
 
 export const trpcClient = trpc.createClient({
   links: [
-    httpBatchLink({
+    httpLink({
       url: 'https://safely-backend.vercel.app/api/trpc',
+      transformer: superjson,
     }),
   ],
-})
+});

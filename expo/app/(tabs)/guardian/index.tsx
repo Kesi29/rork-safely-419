@@ -9,6 +9,8 @@ import {
   Modal,
   Switch,
   Alert,
+  Keyboard,
+  TouchableWithoutFeedback,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Shield, Plus } from 'lucide-react-native';
@@ -36,6 +38,7 @@ export default function GuardianScreen() {
   const [editingGuardian, setEditingGuardian] = useState<Guardian | null>(null);
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
+  const [email, setEmail] = useState('');
   const [relationship, setRelationship] = useState<Relationship>('Friend');
   const [isPrimary, setIsPrimary] = useState(false);
 
@@ -43,6 +46,7 @@ export default function GuardianScreen() {
     setEditingGuardian(null);
     setName('');
     setPhone('');
+    setEmail('');
     setRelationship('Friend');
     setIsPrimary(guardians.length === 0);
     setShowModal(true);
@@ -52,6 +56,7 @@ export default function GuardianScreen() {
     setEditingGuardian(guardian);
     setName(guardian.name);
     setPhone(guardian.phone);
+    setEmail(guardian.email ?? '');
     setRelationship(guardian.relationship);
     setIsPrimary(guardian.isPrimary);
     setShowModal(true);
@@ -63,11 +68,17 @@ export default function GuardianScreen() {
       return;
     }
 
+    if (!email.trim()) {
+      Alert.alert('Required', 'Email address is required so your guardian can receive alerts.');
+      return;
+    }
+
     if (editingGuardian) {
       updateGuardian({
         ...editingGuardian,
         name: name.trim(),
         phone: phone.trim(),
+        email: email.trim(),
         relationship,
         isPrimary,
       });
@@ -76,6 +87,7 @@ export default function GuardianScreen() {
         id: `guardian-${Date.now()}`,
         name: name.trim(),
         phone: phone.trim(),
+        email: email.trim(),
         relationship,
         isPrimary,
         avatarColor: AVATAR_COLORS[guardians.length % AVATAR_COLORS.length],
@@ -93,7 +105,7 @@ export default function GuardianScreen() {
       }
     }
     setShowModal(false);
-  }, [name, phone, relationship, isPrimary, editingGuardian, guardians.length, addGuardian, updateGuardian, userId]);
+  }, [name, phone, email, relationship, isPrimary, editingGuardian, guardians.length, addGuardian, updateGuardian, userId]);
 
   const handleRemove = useCallback((id: string, guardianName: string) => {
     Alert.alert(
@@ -169,15 +181,16 @@ export default function GuardianScreen() {
           }
           ListFooterComponent={
             <Text style={styles.infoText}>
-              Your guardian gets SMS alerts — they don't need the Safely app. Swipe for options.
+              Your guardian will receive email alerts when you activate Safely.
             </Text>
           }
         />
       )}
 
       <Modal visible={showModal} transparent animationType="slide">
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalSheet}>
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalSheet}>
             <View style={styles.modalHandle} />
             <Text style={styles.modalTitle}>
               {editingGuardian ? 'Edit Guardian' : 'Add Guardian'}
@@ -190,6 +203,8 @@ export default function GuardianScreen() {
               onChangeText={setName}
               placeholder="Guardian's name"
               placeholderTextColor={Colors.textMuted}
+              returnKeyType="next"
+              blurOnSubmit={false}
             />
 
             <Text style={styles.inputLabel}>Phone</Text>
@@ -200,6 +215,20 @@ export default function GuardianScreen() {
               placeholder="Phone number"
               placeholderTextColor={Colors.textMuted}
               keyboardType="phone-pad"
+              returnKeyType="next"
+              blurOnSubmit={false}
+            />
+
+            <Text style={styles.inputLabel}>EMAIL</Text>
+            <TextInput
+              style={styles.input}
+              value={email}
+              onChangeText={setEmail}
+              placeholder="their@email.com"
+              placeholderTextColor={Colors.textMuted}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              returnKeyType="done"
             />
 
             <Text style={styles.inputLabel}>Relationship</Text>
@@ -232,14 +261,15 @@ export default function GuardianScreen() {
             </TouchableOpacity>
 
             <Text style={styles.consentText}>
-              By adding this guardian you confirm they have consented to receive SMS messages from Safely. Standard messaging rates may apply to your guardian.
+              Your guardian will receive an email when you activate Safely
             </Text>
 
             <TouchableOpacity style={styles.cancelBtn} onPress={() => setShowModal(false)}>
               <Text style={styles.cancelBtnText}>Cancel</Text>
             </TouchableOpacity>
+            </View>
           </View>
-        </View>
+        </TouchableWithoutFeedback>
       </Modal>
     </View>
   );
