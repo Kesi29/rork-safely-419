@@ -143,6 +143,21 @@ export default function ActiveTrackingScreen() {
         setHasGpsLock(true);
         console.log('ActiveTracking: GPS lock acquired');
 
+        const sid = useSafelyStore.getState().activeSessionId;
+        if (sid) {
+          fetch(`${CONFIG.BACKEND_URL}/sessions/location`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              sessionId: sid,
+              latitude: loc.coords.latitude,
+              longitude: loc.coords.longitude,
+            }),
+          }).then(r => r.json())
+            .then(d => console.log('ActiveTracking: Initial location posted', d))
+            .catch(e => console.log('ActiveTracking: Initial location post error', e));
+        }
+
         sub = await Location.watchPositionAsync(
           {
             accuracy: Location.Accuracy.High,
@@ -156,6 +171,21 @@ export default function ActiveTrackingScreen() {
               longitude: location.coords.longitude,
             };
             setCurrentCoords(newCoords);
+
+            const sid = useSafelyStore.getState().activeSessionId;
+            if (sid) {
+              fetch(`${CONFIG.BACKEND_URL}/sessions/location`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  sessionId: sid,
+                  latitude: location.coords.latitude,
+                  longitude: location.coords.longitude,
+                }),
+              }).then(r => r.json())
+                .then(d => console.log('ActiveTracking: Location posted', d))
+                .catch(e => console.log('ActiveTracking: Location post error', e));
+            }
           }
         );
       } catch (e) {
