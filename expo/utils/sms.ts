@@ -1,9 +1,14 @@
-import { trpcClient } from '@/lib/trpc';
+import { API_BASE } from '@/lib/trpc';
 
 export async function sendGuardianSMS(to: string, message: string): Promise<boolean> {
   try {
     console.log('SMS: Sending to', to, 'message:', message);
-    const result = await trpcClient.sms.send.mutate({ to, message });
+    const res = await fetch(`${API_BASE}/sms/send`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ to, message }),
+    });
+    const result = await res.json();
     console.log('SMS: Result', result);
     return result.success;
   } catch (error) {
