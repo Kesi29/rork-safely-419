@@ -80,7 +80,7 @@ export default function SettingsScreen() {
     setPendingAddress(null);
   }, []);
 
-  const handleSaveAddress = useCallback(() => {
+  const handleSaveAddress = useCallback(async () => {
     if (!pendingAddress) return;
     console.log('Settings: saving new home address:', pendingAddress.label);
     setHomeAddress({
@@ -89,7 +89,19 @@ export default function SettingsScreen() {
     });
     setIsEditingAddress(false);
     setPendingAddress(null);
-  }, [pendingAddress, setHomeAddress]);
+
+    if (userId && !userId.startsWith('local-')) {
+      console.log('Settings: Updating users table with home address');
+      const { error } = await supabase.from('users').update({
+        home_latitude: pendingAddress.coords.latitude,
+        home_longitude: pendingAddress.coords.longitude,
+        home_address: pendingAddress.label,
+      }).eq('id', userId);
+      if (error) {
+        console.log('Settings: users table update error', error);
+      }
+    }
+  }, [pendingAddress, setHomeAddress, userId]);
 
   const handleCancelEdit = useCallback(() => {
     setIsEditingAddress(false);

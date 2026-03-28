@@ -54,7 +54,17 @@ export default function NameScreen() {
           last_name: trimLast,
         }, { onConflict: 'user_id' });
         if (error) {
-          console.log('NameScreen: Supabase upsert error', error);
+          console.log('NameScreen: Supabase profile upsert error', error);
+        }
+
+        console.log('NameScreen: Upserting user to users table', userId);
+        const { error: usersError } = await supabase.from('users').upsert({
+          id: userId,
+          name: fullName,
+          phone: '',
+        }, { onConflict: 'id' });
+        if (usersError) {
+          console.log('NameScreen: Supabase users upsert error', usersError);
         }
       }
 

@@ -7,12 +7,11 @@ import {
   Alert,
   Animated,
   TouchableOpacity,
-  Modal,
   Linking,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Home as HomeIcon, X, Moon } from 'lucide-react-native';
+import { Home as HomeIcon, X, Moon, Phone } from 'lucide-react-native';
 import SafeMap, { SafeMarker, SafePolyline } from '@/components/SafeMap';
 import * as Location from 'expo-location';
 import Colors from '@/constants/colors';
@@ -566,16 +565,14 @@ export default function ActiveTrackingScreen() {
         onDismiss={() => setShowToast(false)}
       />
 
-      <Modal visible={sosActive} transparent animationType="slide">
+      {sosActive && (
         <View style={sosStyles.overlay}>
-          <View style={sosStyles.sheet}>
-            <View style={sosStyles.handle} />
+          <View style={sosStyles.island}>
+            <Animated.View style={[sosStyles.pulseBar, { opacity: sosPulseAnim }]} />
 
             <View style={sosStyles.indicatorRow}>
-              <View style={sosStyles.indicatorInner}>
-                <Animated.View style={[sosStyles.pulseDot, { opacity: sosPulseAnim }]} />
-                <Text style={sosStyles.indicatorText}>SOS Active</Text>
-              </View>
+              <View style={sosStyles.pulseDot} />
+              <Text style={sosStyles.indicatorText}>SOS Active</Text>
             </View>
 
             <Text style={sosStyles.title}>SOS Activated</Text>
@@ -586,12 +583,22 @@ export default function ActiveTrackingScreen() {
 
             <Text style={sosStyles.timeText}>Sent at {sosTime}</Text>
 
+            <View style={sosStyles.liveRow}>
+              <View style={sosStyles.liveDot} />
+              <Text style={sosStyles.liveText}>
+                Live location sharing with {primaryGuardian?.name ?? 'guardian'}
+              </Text>
+            </View>
+
             <TouchableOpacity
               style={sosStyles.call911Btn}
               onPress={() => Linking.openURL('tel:911')}
               activeOpacity={0.8}
             >
-              <Text style={sosStyles.call911Text}>Call 911</Text>
+              <View style={sosStyles.call911Inner}>
+                <Phone size={20} color="#FFFFFF" />
+                <Text style={sosStyles.call911Text}>Call 911</Text>
+              </View>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -630,110 +637,143 @@ export default function ActiveTrackingScreen() {
             </TouchableOpacity>
           </View>
         </View>
-      </Modal>
+      )}
     </View>
   );
 }
 
 const sosStyles = StyleSheet.create({
   overlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.75)',
-    justifyContent: 'flex-end',
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    zIndex: 999,
   },
-  sheet: {
+  island: {
     backgroundColor: '#0D0D0D',
-    borderTopLeftRadius: 32,
-    borderTopRightRadius: 32,
-    paddingTop: 12,
+    borderRadius: 28,
+    paddingTop: 28,
     paddingHorizontal: 24,
-    paddingBottom: 48,
-    borderTopWidth: 1.5,
-    borderTopColor: 'rgba(255,59,59,0.6)',
+    paddingBottom: 28,
+    width: '100%',
+    maxWidth: 360,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,59,59,0.4)',
+    shadowColor: '#FF3B3B',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.3,
+    shadowRadius: 24,
+    elevation: 12,
   },
-  handle: {
-    width: 36,
-    height: 4,
-    backgroundColor: 'rgba(255,255,255,0.2)',
+  pulseBar: {
+    height: 3,
+    backgroundColor: '#FF3B3B',
     borderRadius: 2,
-    alignSelf: 'center',
-    marginBottom: 28,
+    marginBottom: 20,
   },
   indicatorRow: {
-    alignItems: 'center',
-    marginBottom: 24,
-  },
-  indicatorInner: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: 8,
+    marginBottom: 16,
   },
   pulseDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
     backgroundColor: '#FF3B3B',
   },
   indicatorText: {
     color: '#FF3B3B',
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '600' as const,
     letterSpacing: 1.5,
     textTransform: 'uppercase' as const,
   },
   title: {
-    fontFamily: 'PlayfairDisplay_700Italic',
-    fontSize: 32,
+    fontSize: 26,
+    fontWeight: '800' as const,
     color: '#FFFFFF',
+    textAlign: 'center',
+    marginBottom: 6,
+  },
+  notifiedText: {
+    fontSize: 15,
+    color: 'rgba(255,255,255,0.55)',
+    textAlign: 'center',
+    marginBottom: 3,
+  },
+  timeText: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.3)',
     textAlign: 'center',
     marginBottom: 8,
   },
-  notifiedText: {
-    fontSize: 16,
-    color: 'rgba(255,255,255,0.6)',
-    textAlign: 'center',
-    marginBottom: 4,
+  liveRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    marginBottom: 28,
   },
-  timeText: {
-    fontSize: 13,
-    color: 'rgba(255,255,255,0.35)',
-    textAlign: 'center',
-    marginBottom: 36,
+  liveDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#00E87A',
+  },
+  liveText: {
+    fontSize: 12,
+    color: '#00E87A',
+    fontWeight: '500' as const,
   },
   call911Btn: {
     backgroundColor: '#FF3B3B',
     borderRadius: 16,
-    height: 56,
+    height: 64,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 12,
+    marginBottom: 10,
     shadowColor: '#FF3B3B',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.4,
     shadowRadius: 12,
     elevation: 8,
   },
+  call911Inner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
   call911Text: {
     color: '#FFFFFF',
-    fontSize: 17,
-    fontWeight: '700' as const,
+    fontSize: 18,
+    fontWeight: '800' as const,
   },
   cancelSosBtn: {
     backgroundColor: 'transparent',
-    borderRadius: 16,
-    height: 56,
+    borderRadius: 14,
+    height: 48,
     alignItems: 'center',
     justifyContent: 'center',
+    marginTop: 4,
     borderWidth: 1.5,
-    borderColor: 'rgba(255,255,255,0.25)',
+    borderColor: 'rgba(255,255,255,0.2)',
   },
   cancelSosBtnConfirm: {
     backgroundColor: '#FFB020',
     borderColor: '#FFB020',
   },
   cancelSosText: {
-    color: 'rgba(255,255,255,0.7)',
-    fontSize: 16,
+    color: 'rgba(255,255,255,0.6)',
+    fontSize: 15,
     fontWeight: '600' as const,
   },
   cancelSosTextConfirm: {
