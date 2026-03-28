@@ -534,25 +534,36 @@ export default function HomeScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.mapFull}>
-        <SafeMap
-          mapRef={mapRef}
-          style={StyleSheet.absoluteFillObject}
-          initialRegion={mapRegion}
-          showsUserLocation
-          followsUserLocation
-          showsMyLocationButton={false}
-          showsCompass={false}
-          fallbackLabel="Map loading..."
-          fallbackCoords={currentCoords ?? undefined}
-        >
-          {homeAddress.coords && (
-            <SafeMarker coordinate={homeAddress.coords}>
-              <View style={styles.homePin}>
-                <Text style={styles.homePinIcon}>🏠</Text>
-              </View>
-            </SafeMarker>
-          )}
-        </SafeMap>
+        <View style={{ pointerEvents: 'none' }}>
+          <SafeMap
+            mapRef={mapRef}
+            style={StyleSheet.absoluteFillObject}
+            initialRegion={mapRegion}
+            showsUserLocation
+            followsUserLocation
+            showsMyLocationButton={false}
+            showsCompass={false}
+            fallbackLabel="Map loading..."
+            fallbackCoords={currentCoords ?? undefined}
+            scrollEnabled={false}
+            zoomEnabled={false}
+            rotateEnabled={false}
+            pitchEnabled={false}
+            zoomTapEnabled={false}
+            zoomControlEnabled={false}
+            toolbarEnabled={false}
+            moveOnMarkerPress={false}
+            pointerEvents="none"
+          >
+            {homeAddress.coords && (
+              <SafeMarker coordinate={homeAddress.coords}>
+                <View style={styles.homePin}>
+                  <Text style={styles.homePinIcon}>🏠</Text>
+                </View>
+              </SafeMarker>
+            )}
+          </SafeMap>
+        </View>
       </View>
 
       <SafeAreaView edges={['top']} style={styles.overlay} pointerEvents="box-none">

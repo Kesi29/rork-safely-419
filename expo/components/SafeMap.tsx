@@ -25,6 +25,11 @@ interface SafeMapProps {
   zoomEnabled?: boolean;
   pitchEnabled?: boolean;
   rotateEnabled?: boolean;
+  zoomTapEnabled?: boolean;
+  zoomControlEnabled?: boolean;
+  toolbarEnabled?: boolean;
+  moveOnMarkerPress?: boolean;
+  pointerEvents?: 'box-none' | 'none' | 'box-only' | 'auto';
   mapRef?: React.RefObject<any>;
   fallbackLabel?: string;
   fallbackCoords?: { latitude: number; longitude: number };
@@ -64,6 +69,11 @@ export default function SafeMap({
   zoomEnabled = true,
   pitchEnabled = true,
   rotateEnabled = true,
+  zoomTapEnabled,
+  zoomControlEnabled,
+  toolbarEnabled,
+  moveOnMarkerPress,
+  pointerEvents,
   mapRef,
   fallbackLabel,
   fallbackCoords,
@@ -95,6 +105,11 @@ export default function SafeMap({
       zoomEnabled={zoomEnabled}
       pitchEnabled={pitchEnabled}
       rotateEnabled={rotateEnabled}
+      zoomTapEnabled={zoomTapEnabled}
+      zoomControlEnabled={zoomControlEnabled}
+      toolbarEnabled={toolbarEnabled}
+      moveOnMarkerPress={moveOnMarkerPress}
+      pointerEvents={pointerEvents}
     >
       {children}
     </MapView>
