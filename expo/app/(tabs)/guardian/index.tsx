@@ -9,6 +9,8 @@ import {
   Modal,
   Switch,
   Alert,
+  Keyboard,
+  TouchableWithoutFeedback,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Shield, Plus } from 'lucide-react-native';
@@ -179,15 +181,16 @@ export default function GuardianScreen() {
           }
           ListFooterComponent={
             <Text style={styles.infoText}>
-              Your guardian gets SMS alerts — they don't need the Safely app. Swipe for options.
+              Your guardian will receive email alerts when you activate Safely.
             </Text>
           }
         />
       )}
 
       <Modal visible={showModal} transparent animationType="slide">
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalSheet}>
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalSheet}>
             <View style={styles.modalHandle} />
             <Text style={styles.modalTitle}>
               {editingGuardian ? 'Edit Guardian' : 'Add Guardian'}
@@ -200,6 +203,8 @@ export default function GuardianScreen() {
               onChangeText={setName}
               placeholder="Guardian's name"
               placeholderTextColor={Colors.textMuted}
+              returnKeyType="next"
+              blurOnSubmit={false}
             />
 
             <Text style={styles.inputLabel}>Phone</Text>
@@ -210,6 +215,8 @@ export default function GuardianScreen() {
               placeholder="Phone number"
               placeholderTextColor={Colors.textMuted}
               keyboardType="phone-pad"
+              returnKeyType="next"
+              blurOnSubmit={false}
             />
 
             <Text style={styles.inputLabel}>EMAIL</Text>
@@ -221,6 +228,7 @@ export default function GuardianScreen() {
               placeholderTextColor={Colors.textMuted}
               keyboardType="email-address"
               autoCapitalize="none"
+              returnKeyType="done"
             />
 
             <Text style={styles.inputLabel}>Relationship</Text>
@@ -259,8 +267,9 @@ export default function GuardianScreen() {
             <TouchableOpacity style={styles.cancelBtn} onPress={() => setShowModal(false)}>
               <Text style={styles.cancelBtnText}>Cancel</Text>
             </TouchableOpacity>
+            </View>
           </View>
-        </View>
+        </TouchableWithoutFeedback>
       </Modal>
     </View>
   );

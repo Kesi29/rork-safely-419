@@ -158,6 +158,8 @@ export default function SettingsScreen() {
                 onBlur={handleNameSave}
                 placeholder="Your name"
                 placeholderTextColor={Colors.textMuted}
+                returnKeyType="done"
+                onSubmitEditing={handleNameSave}
               />
               <Text style={styles.profileCaption}>Name used in guardian alerts</Text>
             </View>

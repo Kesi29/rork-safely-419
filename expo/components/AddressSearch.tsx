@@ -13,8 +13,9 @@ import { Search, X, MapPin } from 'lucide-react-native';
 import SafeMap, { SafeMarker } from '@/components/SafeMap';
 import Colors from '@/constants/colors';
 import Card from '@/components/Card';
+import { CONFIG } from '@/lib/config';
 
-const GOOGLE_API_KEY = process.env.EXPO_PUBLIC_GOOGLE_PLACES_API_KEY ?? '';
+const GOOGLE_API_KEY = CONFIG.GOOGLE_PLACES_KEY;
 
 const PLACES_PROXY_URL = 'https://places.googleapis.com/v1/places:autocomplete';
 const PLACE_DETAILS_URL = 'https://places.googleapis.com/v1/places';

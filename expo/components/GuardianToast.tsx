@@ -45,7 +45,7 @@ export default function GuardianToast({ guardianName, message, borderColor = Col
       <View style={styles.inner}>
         <Avatar name={guardianName} size={44} />
         <View style={styles.content}>
-          <Text style={styles.title}>SMS sent to {guardianName}</Text>
+          <Text style={styles.title}>Email sent to {guardianName}</Text>
           <View style={[styles.bubble, { borderLeftColor: borderColor }]}>
             <Text style={styles.message}>{message}</Text>
           </View>

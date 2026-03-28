@@ -15,7 +15,7 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { X } from 'lucide-react-native';
+import { X, ChevronRight } from 'lucide-react-native';
 import SafeMap, { SafeMarker } from '@/components/SafeMap';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Location from 'expo-location';
@@ -573,7 +573,11 @@ export default function HomeScreen() {
         )}
 
         {primaryGuardian && (
-          <View style={styles.guardianCardWrapper}>
+          <TouchableOpacity
+            style={styles.guardianCardWrapper}
+            onPress={() => router.push('/(tabs)/guardian')}
+            activeOpacity={0.7}
+          >
             <Card style={styles.guardianCard}>
               <View style={styles.guardianRow}>
                 <Avatar
@@ -588,9 +592,10 @@ export default function HomeScreen() {
                   <Text style={styles.guardianMeta}>Ready to watch over you</Text>
                 </View>
                 <View style={styles.readyDot} />
+                <ChevronRight size={16} color="#BBBBBB" style={{ marginLeft: 6 }} />
               </View>
             </Card>
-          </View>
+          </TouchableOpacity>
         )}
       </SafeAreaView>
 

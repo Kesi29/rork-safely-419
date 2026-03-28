@@ -6,6 +6,7 @@ export const DEFAULT_PRIMARY_GUARDIAN: Guardian = {
   id: '1',
   name: 'Jordan',
   phone: '555-0192',
+  email: '',
   relationship: 'Partner',
   isPrimary: true,
   avatarColor: '#18A57D',
