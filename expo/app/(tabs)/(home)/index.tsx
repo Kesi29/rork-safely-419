@@ -404,6 +404,9 @@ export default function HomeScreen() {
 
     try {
       console.log('HomeScreen: Saving session to Supabase FIRST');
+      const etaMinutes = selectedEta;
+      const etaDate2 = new Date(Date.now() + etaMinutes * 60 * 1000);
+
       const { data: sessionData, error: sessionError } = await supabase
         .from('sessions')
         .insert({
@@ -412,6 +415,7 @@ export default function HomeScreen() {
           tracking_token: trackingToken,
           activated_at: new Date().toISOString(),
           event_name: eventName,
+          eta: etaDate2.toISOString(),
         })
         .select()
         .single();

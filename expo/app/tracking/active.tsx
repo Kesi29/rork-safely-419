@@ -152,6 +152,8 @@ export default function ActiveTrackingScreen() {
               sessionId: sid,
               latitude: loc.coords.latitude,
               longitude: loc.coords.longitude,
+              speed: loc.coords.speed ?? null,
+              heading: loc.coords.heading ?? null,
             }),
           }).then(r => r.json())
             .then(d => console.log('ActiveTracking: Initial location posted', d))
@@ -181,6 +183,8 @@ export default function ActiveTrackingScreen() {
                   sessionId: sid,
                   latitude: location.coords.latitude,
                   longitude: location.coords.longitude,
+                  speed: location.coords.speed ?? null,
+                  heading: location.coords.heading ?? null,
                 }),
               }).then(r => r.json())
                 .then(d => console.log('ActiveTracking: Location posted', d))
