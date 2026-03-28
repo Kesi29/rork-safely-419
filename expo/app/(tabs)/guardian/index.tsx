@@ -11,6 +11,8 @@ import {
   Alert,
   Keyboard,
   TouchableWithoutFeedback,
+  InputAccessoryView,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Shield, Plus } from 'lucide-react-native';
@@ -63,8 +65,8 @@ export default function GuardianScreen() {
   }, []);
 
   const handleSave = useCallback(() => {
-    if (!name.trim() || !phone.trim()) {
-      Alert.alert('Required', 'Name and phone number are required.');
+    if (!name.trim()) {
+      Alert.alert('Required', 'Name is required.');
       return;
     }
 
@@ -181,7 +183,7 @@ export default function GuardianScreen() {
           }
           ListFooterComponent={
             <Text style={styles.infoText}>
-              Your guardian will receive email alerts when you activate Safely.
+              Your guardian will receive an email when you activate Safely
             </Text>
           }
         />
@@ -207,18 +209,6 @@ export default function GuardianScreen() {
               blurOnSubmit={false}
             />
 
-            <Text style={styles.inputLabel}>Phone</Text>
-            <TextInput
-              style={styles.input}
-              value={phone}
-              onChangeText={setPhone}
-              placeholder="Phone number"
-              placeholderTextColor={Colors.textMuted}
-              keyboardType="phone-pad"
-              returnKeyType="next"
-              blurOnSubmit={false}
-            />
-
             <Text style={styles.inputLabel}>EMAIL</Text>
             <TextInput
               style={styles.input}
@@ -228,8 +218,31 @@ export default function GuardianScreen() {
               placeholderTextColor={Colors.textMuted}
               keyboardType="email-address"
               autoCapitalize="none"
-              returnKeyType="done"
+              returnKeyType="next"
+              blurOnSubmit={false}
             />
+
+            <Text style={styles.inputLabel}>PHONE (optional)</Text>
+            <TextInput
+              style={styles.input}
+              value={phone}
+              onChangeText={setPhone}
+              placeholder="Phone number"
+              placeholderTextColor={Colors.textMuted}
+              keyboardType="phone-pad"
+              returnKeyType="done"
+              onSubmitEditing={Keyboard.dismiss}
+              inputAccessoryViewID="phoneDone"
+            />
+            {Platform.OS === 'ios' && (
+              <InputAccessoryView nativeID="phoneDone">
+                <View style={styles.keyboardAccessory}>
+                  <TouchableOpacity onPress={Keyboard.dismiss} style={styles.keyboardDoneBtn}>
+                    <Text style={styles.keyboardDoneText}>Done</Text>
+                  </TouchableOpacity>
+                </View>
+              </InputAccessoryView>
+            )}
 
             <Text style={styles.inputLabel}>Relationship</Text>
             <View style={styles.relPicker}>
@@ -513,5 +526,22 @@ const styles = StyleSheet.create({
     marginTop: 12,
     marginBottom: 4,
     paddingHorizontal: 16,
+  },
+  keyboardAccessory: {
+    backgroundColor: '#F8F8F8',
+    borderTopWidth: 0.5,
+    borderTopColor: '#CCCCCC',
+    alignItems: 'flex-end',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+  },
+  keyboardDoneBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  keyboardDoneText: {
+    fontSize: 17,
+    color: '#007AFF',
+    fontWeight: '600' as const,
   },
 });

@@ -4,12 +4,11 @@ import React from "react";
 import { View, Text, StyleSheet } from "react-native";
 import Colors from "@/constants/colors";
 
-function TabIcon({ icon: Icon, label, focused }: { icon: any; label: string; focused: boolean }) {
+function TabIcon({ icon: Icon, focused }: { icon: any; label: string; focused: boolean }) {
   if (focused) {
     return (
       <View style={styles.activePill}>
         <Icon size={18} color={Colors.textPrimary} />
-        <Text style={styles.activePillLabel}>{label}</Text>
       </View>
     );
   }

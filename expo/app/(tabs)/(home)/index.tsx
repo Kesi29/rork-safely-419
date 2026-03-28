@@ -309,6 +309,7 @@ export default function HomeScreen() {
   }, [setCurrentCoords]);
 
   const handleStartSafely = useCallback(async () => {
+    console.log('HomeScreen: handleStartSafely called');
     if (!primaryGuardian) {
       Alert.alert(
         'Add a Guardian First',
@@ -607,6 +608,11 @@ export default function HomeScreen() {
               { opacity: haloAnim, transform: [{ scale: haloScaleAnim }] },
             ]} />
             <Animated.View style={[styles.orbHaloInner, { opacity: haloAnim }]} />
+            <TouchableOpacity
+              onPress={handleStartSafely}
+              activeOpacity={0.85}
+              style={styles.orbTouchableOuter}
+            >
             <Animated.View style={[styles.orbWrapper, { transform: [{ scale: pulseAnim }] }]}>
               <TouchableOpacity
                 onPress={handleStartSafely}
@@ -643,6 +649,7 @@ export default function HomeScreen() {
                 </LinearGradient>
               </TouchableOpacity>
             </Animated.View>
+            </TouchableOpacity>
           </View>
         </View>
         <Text style={styles.bottomCaption}>Tap when you're heading home</Text>
@@ -860,6 +867,12 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 232, 122, 0.12)',
   },
   orbWrapper: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  orbTouchableOuter: {
+    width: ORB_SIZE + 40,
+    height: ORB_SIZE + 40,
     alignItems: 'center',
     justifyContent: 'center',
   },
