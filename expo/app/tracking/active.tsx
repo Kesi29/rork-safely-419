@@ -7,6 +7,8 @@ import {
   Alert,
   Animated,
   TouchableOpacity,
+  Modal,
+  Linking,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -70,6 +72,12 @@ export default function ActiveTrackingScreen() {
   const [initialCoords, setInitialCoords] = useState<{latitude: number; longitude: number} | null>(null);
   const trackingStartTime = useRef(Date.now()).current;
   const hasNavigatedAway = useRef(false);
+
+  const [sosActive, setSosActive] = useState(false);
+  const [confirmingCancel, setConfirmingCancel] = useState(false);
+  const [sosTime, setSosTime] = useState('');
+  const sosPulseAnim = useRef(new Animated.Value(1)).current;
+  const sosPulseRef = useRef<Animated.CompositeAnimation | null>(null);
 
   const dotOpacity = useRef(new Animated.Value(1)).current;
   const mapRef = useRef<any>(null);
@@ -196,10 +204,10 @@ export default function ActiveTrackingScreen() {
         body: JSON.stringify({
           from: 'Safely <onboarding@resend.dev>',
           to: guardianEmail,
-          subject: `${userName} made it home safely \u2713`,
+          subject: `${userName} made it home safely ✓`,
           html: `
             <div style="font-family:system-ui;max-width:480px;margin:0 auto;padding:32px;">
-              <h2 style="color:#00E87A;">${userName} made it home safely! \uD83C\uDF89</h2>
+              <h2 style="color:#00E87A;">${userName} made it home safely! 🎉</h2>
               <p style="color:#8A8A8A;">They arrived at ${new Date().toLocaleTimeString()}</p>
               <p style="color:#BBBBBB;font-size:12px;margin-top:32px;">Powered by Safely</p>
             </div>
@@ -228,6 +236,42 @@ export default function ActiveTrackingScreen() {
     }
   }, [activeSessionId]);
 
+  const sendSOSEmail = useCallback(async () => {
+    const guardianEmail = primaryGuardian?.email;
+    if (!guardianEmail) {
+      console.log('ActiveTracking: No guardian email, skipping SOS email');
+      return;
+    }
+    try {
+      console.log('ActiveTracking: Sending SOS email to', guardianEmail);
+      await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${CONFIG.RESEND_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          from: 'Safely <onboarding@resend.dev>',
+          to: guardianEmail,
+          subject: `🚨 ${userName} triggered SOS — needs help NOW`,
+          html: `
+            <div style="font-family:system-ui;max-width:480px;margin:0 auto;padding:32px;">
+              <h2 style="color:#FF3B3B;">🚨 SOS Alert</h2>
+              <p style="font-size:18px;color:#0A0A0A;font-weight:600;">${userName} has triggered an emergency SOS</p>
+              <p style="color:#8A8A8A;">Triggered at ${new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}</p>
+              <p style="color:#8A8A8A;">Please try to reach them immediately or call emergency services.</p>
+              <a href="tel:911" style="display:block;background:#FF3B3B;color:#FFFFFF;padding:16px 24px;border-radius:12px;text-decoration:none;font-weight:bold;text-align:center;margin:24px 0;font-size:16px;">Call 911</a>
+              <p style="color:#BBBBBB;font-size:12px;margin-top:32px;">Powered by Safely</p>
+            </div>
+          `,
+        }),
+      });
+      console.log('ActiveTracking: SOS email sent');
+    } catch (e) {
+      console.log('ActiveTracking: SOS email error', e);
+    }
+  }, [primaryGuardian, userName]);
+
   useEffect(() => {
     if (!currentCoords || !homeAddress.coords || trackingStatus !== 'active') return;
     if (!hasGpsLock) {
@@ -255,7 +299,7 @@ export default function ActiveTrackingScreen() {
       console.log('ActiveTracking: Within 150m of home, triggering arrival');
       hasNavigatedAway.current = true;
       setTrackingStatus('arrived');
-      setToastMessage(`${userName} arrived home safely at ${new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })} \uD83C\uDFE0`);
+      setToastMessage(`${userName} arrived home safely at ${new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })} 🏠`);
       setShowToast(true);
       void sendArrivalEmail();
       void updateSessionArrived();
@@ -283,7 +327,7 @@ export default function ActiveTrackingScreen() {
       const pct = totalMins > 0 ? elapsed / totalMins : 0;
 
       if (totalSecs <= 0) {
-        setStatusMessage("You should be home by now\u2026");
+        setStatusMessage("You should be home by now…");
         if (trackingStatus === 'active') {
           const lateThreshold = etaTime + 15 * 60000;
           if (now > lateThreshold) {
@@ -292,11 +336,11 @@ export default function ActiveTrackingScreen() {
           }
         }
       } else if (mins < 10) {
-        setStatusMessage("Nearly home! \uD83C\uDFC3");
+        setStatusMessage("Nearly home! 🏃");
       } else if (pct > 0.5) {
         setStatusMessage("Keep going, almost there!");
       } else {
-        setStatusMessage("You're on your way \uD83C\uDFE0");
+        setStatusMessage("You're on your way 🏠");
       }
     }, 1000);
 
@@ -320,7 +364,7 @@ export default function ActiveTrackingScreen() {
   const handleImHome = useCallback(() => {
     void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     setTrackingStatus('arrived');
-    setToastMessage(`${userName} arrived home safely at ${new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })} \uD83C\uDFE0`);
+    setToastMessage(`${userName} arrived home safely at ${new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })} 🏠`);
     setShowToast(true);
     void cleanupTracking();
     void sendArrivalEmail();
@@ -340,7 +384,7 @@ export default function ActiveTrackingScreen() {
           text: 'Confirm',
           onPress: () => {
             setTrackingStatus('arrived');
-            setToastMessage(`${userName} is staying over safely \u2713`);
+            setToastMessage(`${userName} is staying over safely ✓`);
             setShowToast(true);
             void cleanupTracking();
             void sendArrivalEmail();
@@ -373,10 +417,46 @@ export default function ActiveTrackingScreen() {
     );
   }, [primaryGuardian, endSession, router, cleanupTracking]);
 
-  const handleSOS = useCallback(() => {
-    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-    router.push('/sos-modal');
-  }, [router]);
+  const handleSOS = useCallback(async () => {
+    void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+    console.log('ActiveTracking: SOS triggered');
+
+    setSosActive(true);
+    setSosTime(new Date().toLocaleTimeString('en-US', {
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+    }));
+
+    const pulseLoop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(sosPulseAnim, {
+          toValue: 0.3,
+          duration: 800,
+          useNativeDriver: true,
+        }),
+        Animated.timing(sosPulseAnim, {
+          toValue: 1,
+          duration: 800,
+          useNativeDriver: true,
+        }),
+      ])
+    );
+    sosPulseRef.current = pulseLoop;
+    pulseLoop.start();
+
+    try {
+      await supabase
+        .from('sessions')
+        .update({ status: 'emergency' })
+        .eq('id', activeSessionId);
+      console.log('ActiveTracking: Session updated to emergency');
+    } catch (e) {
+      console.log('ActiveTracking: SOS session update error', e);
+    }
+
+    void sendSOSEmail();
+  }, [activeSessionId, sosPulseAnim, sendSOSEmail]);
 
   const routeCoords = currentCoords && homeAddress.coords ? [
     { latitude: currentCoords.latitude, longitude: currentCoords.longitude },
@@ -401,7 +481,7 @@ export default function ActiveTrackingScreen() {
             <SafeMarker coordinate={homeAddress.coords} anchor={{ x: 0.5, y: 0.5 }}>
               <View style={styles.markerContainer}>
                 <View style={styles.homeMarker}>
-                  <Text style={styles.homeMarkerIcon}>{'\uD83D\uDD12'}</Text>
+                  <Text style={styles.homeMarkerIcon}>🔒</Text>
                 </View>
                 <Text style={styles.markerLabel}>Home</Text>
               </View>
@@ -449,7 +529,7 @@ export default function ActiveTrackingScreen() {
                 />
                 <View style={styles.guardianPillText}>
                   <Text style={styles.guardianPillName}>{primaryGuardian.name}</Text>
-                  <Text style={styles.guardianPillStatus}>Watching over you {'\u2713'}</Text>
+                  <Text style={styles.guardianPillStatus}>Watching over you ✓</Text>
                 </View>
               </View>
             </Card>
@@ -485,9 +565,182 @@ export default function ActiveTrackingScreen() {
         visible={showToast}
         onDismiss={() => setShowToast(false)}
       />
+
+      <Modal visible={sosActive} transparent animationType="slide">
+        <View style={sosStyles.overlay}>
+          <View style={sosStyles.sheet}>
+            <View style={sosStyles.handle} />
+
+            <View style={sosStyles.indicatorRow}>
+              <View style={sosStyles.indicatorInner}>
+                <Animated.View style={[sosStyles.pulseDot, { opacity: sosPulseAnim }]} />
+                <Text style={sosStyles.indicatorText}>SOS Active</Text>
+              </View>
+            </View>
+
+            <Text style={sosStyles.title}>SOS Activated</Text>
+
+            <Text style={sosStyles.notifiedText}>
+              {primaryGuardian?.name ?? 'Your guardian'} has been notified
+            </Text>
+
+            <Text style={sosStyles.timeText}>Sent at {sosTime}</Text>
+
+            <TouchableOpacity
+              style={sosStyles.call911Btn}
+              onPress={() => Linking.openURL('tel:911')}
+              activeOpacity={0.8}
+            >
+              <Text style={sosStyles.call911Text}>Call 911</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[
+                sosStyles.cancelSosBtn,
+                confirmingCancel && sosStyles.cancelSosBtnConfirm,
+              ]}
+              onPress={async () => {
+                if (!confirmingCancel) {
+                  setConfirmingCancel(true);
+                  setTimeout(() => setConfirmingCancel(false), 3000);
+                } else {
+                  try {
+                    await supabase.from('sessions')
+                      .update({ status: 'active' })
+                      .eq('id', activeSessionId);
+                  } catch (e) {
+                    console.log('ActiveTracking: Cancel SOS update error', e);
+                  }
+                  sosPulseRef.current?.stop();
+                  sosPulseAnim.setValue(1);
+                  setSosActive(false);
+                  setConfirmingCancel(false);
+                }
+              }}
+              activeOpacity={0.8}
+            >
+              <Text style={[
+                sosStyles.cancelSosText,
+                confirmingCancel && sosStyles.cancelSosTextConfirm,
+              ]}>
+                {confirmingCancel
+                  ? "Tap again to confirm you're safe"
+                  : "I'm Safe — Cancel SOS"}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
+
+const sosStyles = StyleSheet.create({
+  overlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.75)',
+    justifyContent: 'flex-end',
+  },
+  sheet: {
+    backgroundColor: '#0D0D0D',
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
+    paddingTop: 12,
+    paddingHorizontal: 24,
+    paddingBottom: 48,
+    borderTopWidth: 1.5,
+    borderTopColor: 'rgba(255,59,59,0.6)',
+  },
+  handle: {
+    width: 36,
+    height: 4,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    borderRadius: 2,
+    alignSelf: 'center',
+    marginBottom: 28,
+  },
+  indicatorRow: {
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  indicatorInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  pulseDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#FF3B3B',
+  },
+  indicatorText: {
+    color: '#FF3B3B',
+    fontSize: 12,
+    fontWeight: '600' as const,
+    letterSpacing: 1.5,
+    textTransform: 'uppercase' as const,
+  },
+  title: {
+    fontFamily: 'PlayfairDisplay_700Italic',
+    fontSize: 32,
+    color: '#FFFFFF',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  notifiedText: {
+    fontSize: 16,
+    color: 'rgba(255,255,255,0.6)',
+    textAlign: 'center',
+    marginBottom: 4,
+  },
+  timeText: {
+    fontSize: 13,
+    color: 'rgba(255,255,255,0.35)',
+    textAlign: 'center',
+    marginBottom: 36,
+  },
+  call911Btn: {
+    backgroundColor: '#FF3B3B',
+    borderRadius: 16,
+    height: 56,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+    shadowColor: '#FF3B3B',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  call911Text: {
+    color: '#FFFFFF',
+    fontSize: 17,
+    fontWeight: '700' as const,
+  },
+  cancelSosBtn: {
+    backgroundColor: 'transparent',
+    borderRadius: 16,
+    height: 56,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.25)',
+  },
+  cancelSosBtnConfirm: {
+    backgroundColor: '#FFB020',
+    borderColor: '#FFB020',
+  },
+  cancelSosText: {
+    color: 'rgba(255,255,255,0.7)',
+    fontSize: 16,
+    fontWeight: '600' as const,
+  },
+  cancelSosTextConfirm: {
+    color: '#0A0A0A',
+    fontWeight: '700' as const,
+  },
+});
 
 const styles = StyleSheet.create({
   container: {
