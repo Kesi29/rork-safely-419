@@ -23,6 +23,7 @@ import { Guardian, Relationship } from '@/store/types';
 import Avatar from '@/components/Avatar';
 import Card from '@/components/Card';
 import { api } from '@/constants/api';
+import * as Haptics from 'expo-haptics';
 
 const RELATIONSHIPS: Relationship[] = ['Partner', 'Parent', 'Friend', 'Sibling', 'Other'];
 const AVATAR_COLORS = ['#18A57D', '#007AFF', '#FFB020', '#FF3B3B', '#9B59B6'];
@@ -106,6 +107,7 @@ export default function GuardianScreen() {
         console.log('GuardianScreen: API inviteGuardian error', e);
       }
     }
+    void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     setShowModal(false);
   }, [name, phone, email, relationship, isPrimary, editingGuardian, guardians.length, addGuardian, updateGuardian, userId]);
 

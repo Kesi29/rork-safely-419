@@ -2,12 +2,14 @@ import React, { useEffect, useRef } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Animated } from 'react-native';
 import { AlertTriangle } from 'lucide-react-native';
 import Colors from '@/constants/colors';
+import * as Haptics from 'expo-haptics';
 
 interface SOSButtonProps {
   onPress: () => void;
+  onHoldComplete?: () => void;
 }
 
-export default function SOSButton({ onPress }: SOSButtonProps) {
+export default function SOSButton({ onPress, onHoldComplete }: SOSButtonProps) {
   const pulseAnim = useRef(new Animated.Value(0.45)).current;
 
   useEffect(() => {
@@ -29,7 +31,15 @@ export default function SOSButton({ onPress }: SOSButtonProps) {
 
   return (
     <View style={styles.container}>
-      <TouchableOpacity onPress={onPress} activeOpacity={0.8}>
+      <TouchableOpacity
+        onPress={onPress}
+        onLongPress={() => {
+          void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+          onHoldComplete?.();
+        }}
+        delayLongPress={3000}
+        activeOpacity={0.8}
+      >
         <Animated.View style={[styles.button, { shadowOpacity: pulseAnim }]}>
           <AlertTriangle size={26} color="#FFFFFF" />
         </Animated.View>

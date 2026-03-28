@@ -24,6 +24,7 @@ import { supabase } from '@/lib/supabase';
 import { stopAllTracking, clearActiveSession } from '@/hooks/useBackgroundLocation';
 import { cancelNotification } from '@/hooks/useNotifications';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Haptics from 'expo-haptics';
 
 function haversineDistance(a: {latitude: number; longitude: number}, b: {latitude: number; longitude: number}): number {
   const R = 6371000;
@@ -317,6 +318,7 @@ export default function ActiveTrackingScreen() {
   }, []);
 
   const handleImHome = useCallback(() => {
+    void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     setTrackingStatus('arrived');
     setToastMessage(`${userName} arrived home safely at ${new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })} \uD83C\uDFE0`);
     setShowToast(true);
@@ -372,6 +374,7 @@ export default function ActiveTrackingScreen() {
   }, [primaryGuardian, endSession, router, cleanupTracking]);
 
   const handleSOS = useCallback(() => {
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
     router.push('/sos-modal');
   }, [router]);
 

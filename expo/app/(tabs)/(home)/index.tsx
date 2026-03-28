@@ -33,6 +33,7 @@ import { persistActiveSession } from '@/hooks/useBackgroundLocation';
 import { startBackgroundTracking, registerHomeGeofence } from '@/hooks/useBackgroundLocation';
 import { scheduleLocalNotification } from '@/hooks/useNotifications';
 import EventWelcomeSheet from '@/components/EventWelcomeSheet';
+import * as Haptics from 'expo-haptics';
 
 
 
@@ -309,6 +310,7 @@ export default function HomeScreen() {
   }, [setCurrentCoords]);
 
   const handleStartSafely = useCallback(async () => {
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
     console.log('HomeScreen: handleStartSafely called');
     if (!primaryGuardian) {
       Alert.alert(
@@ -370,6 +372,7 @@ export default function HomeScreen() {
   }, [primaryGuardian, homeAddress, router]);
 
   const handleConfirmEta = useCallback(async () => {
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     console.log('START SAFELY TAPPED');
     console.log('primaryGuardian:', JSON.stringify(primaryGuardian));
     console.log('userId from store:', userId);
@@ -676,7 +679,7 @@ export default function HomeScreen() {
                     styles.etaPill,
                     selectedEta === opt.value && styles.etaPillActive,
                   ]}
-                  onPress={() => setSelectedEta(opt.value)}
+                  onPress={() => { void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setSelectedEta(opt.value); }}
                 >
                   <Text style={[
                     styles.etaPillText,

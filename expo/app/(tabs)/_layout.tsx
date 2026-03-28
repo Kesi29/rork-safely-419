@@ -3,6 +3,7 @@ import { Home, Clock, Settings, Shield } from "lucide-react-native";
 import React from "react";
 import { View, Text, StyleSheet } from "react-native";
 import Colors from "@/constants/colors";
+import * as Haptics from 'expo-haptics';
 
 function TabIcon({ icon: Icon, focused }: { icon: any; label: string; focused: boolean }) {
   if (focused) {
@@ -24,6 +25,11 @@ export default function TabLayout() {
         headerShown: false,
         tabBarStyle: styles.tabBar,
         tabBarShowLabel: false,
+      }}
+      screenListeners={{
+        tabPress: () => {
+          void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        },
       }}
     >
       <Tabs.Screen
