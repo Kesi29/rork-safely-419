@@ -370,6 +370,10 @@ export default function HomeScreen() {
   }, [primaryGuardian, homeAddress, router]);
 
   const handleConfirmEta = useCallback(async () => {
+    console.log('START SAFELY TAPPED');
+    console.log('primaryGuardian:', JSON.stringify(primaryGuardian));
+    console.log('userId from store:', userId);
+
     const etaDate = new Date(Date.now() + selectedEta * 60000);
     if (etaDate.getTime() < Date.now()) {
       Alert.alert(
@@ -381,25 +385,19 @@ export default function HomeScreen() {
     }
 
     const guardianEmail = primaryGuardian?.email;
-    if (!guardianEmail) {
-      Alert.alert(
-        'Guardian Email Missing',
-        "Add your guardian's email to send them your tracking link",
-        [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'Add Email', onPress: () => router.push('/(tabs)/guardian') },
-        ]
-      );
-      return;
-    }
+    // Don't return early if email is missing — just skip sending the email
 
     const eventName = connectedEvents[0]?.name ?? null;
     const trackingToken = generateUUID();
 
     const { data: authData } = await supabase.auth.getSession();
     const resolvedUserId = userId || authData?.session?.user?.id || 'anonymous-' + Date.now();
+    console.log('HomeScreen: resolvedUserId:', resolvedUserId);
 
     setShowEtaModal(false);
+
+    let sessionId: string = trackingToken; // fallback: use token as local id
+    let resolvedTrackingToken: string = trackingToken;
 
     try {
       console.log('HomeScreen: Saving session to Supabase FIRST');
@@ -419,100 +417,104 @@ export default function HomeScreen() {
 
       if (sessionError) {
         console.error('Session insert error:', sessionError);
-        Alert.alert('Error', 'Could not start session. Try again.');
-        return;
-      }
+        // Continue with local session — don't block navigation
+      } else {
+        console.log('HomeScreen: Session saved, id:', sessionData.id);
+        sessionId = sessionData.id;
+        resolvedTrackingToken = sessionData.tracking_token;
 
-      console.log('HomeScreen: Session saved, id:', sessionData.id);
+        if (guardianEmail) {
+          const trackingUrl = `${CONFIG.TRACKING_URL}/${sessionData.tracking_token}`;
+          const firstName = useSafelyStore.getState().userName.split(' ')[0];
 
-      const trackingUrl = `${CONFIG.TRACKING_URL}/${sessionData.tracking_token}`;
-      const firstName = useSafelyStore.getState().userName.split(' ')[0];
-
-      try {
-        console.log('HomeScreen: Sending guardian email via Resend to', guardianEmail);
-        await fetch('https://api.resend.com/emails', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${CONFIG.RESEND_KEY}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            from: 'Safely <onboarding@resend.dev>',
-            to: guardianEmail,
-            subject: `${firstName} has activated Safely \uD83D\uDEE1\uFE0F`,
-            html: `
-              <div style="font-family:system-ui;max-width:480px;margin:0 auto;padding:32px;">
-                <h2>${firstName} is heading home</h2>
-                <p style="color:#8A8A8A;">Watch their live location:</p>
-                <a href="${trackingUrl}"
-                   style="display:block;background:#00E87A;color:#0A0A0A;padding:16px 24px;border-radius:12px;text-decoration:none;font-weight:bold;text-align:center;margin:24px 0;">
-                  Track ${firstName} Live \u2192
-                </a>
-                <p style="color:#BBBBBB;font-size:12px;">Powered by Safely</p>
-              </div>
-            `,
-          }),
-        });
-        console.log('HomeScreen: Guardian email sent');
-      } catch (emailErr) {
-        console.log('HomeScreen: Resend email error', emailErr);
-      }
-
-      setActiveSessionId(sessionData.id);
-      setActiveTrackingToken(sessionData.tracking_token);
-      startSession(selectedEta, eventName);
-
-      try {
-        await persistActiveSession({
-          sessionId: sessionData.id,
-          userName: useSafelyStore.getState().userName,
-          guardianEmail: primaryGuardian?.email ?? '',
-          guardianName: primaryGuardian?.name ?? '',
-          eta: etaDate.getTime(),
-          homeLatitude: homeAddress.coords.latitude,
-          homeLongitude: homeAddress.coords.longitude,
-          trackingStatus: 'active',
-        });
-      } catch (e) {
-        console.log('HomeScreen: persistActiveSession error', e);
-      }
-
-      try {
-        await startBackgroundTracking();
-      } catch (e) {
-        console.log('HomeScreen: startBackgroundTracking error', e);
-      }
-
-      try {
-        await registerHomeGeofence(
-          homeAddress.coords.latitude,
-          homeAddress.coords.longitude
-        );
-      } catch (e) {
-        console.log('HomeScreen: registerHomeGeofence error', e);
-      }
-
-      try {
-        const msUntilLate = etaDate.getTime() - Date.now() + (15 * 60 * 1000);
-        const lateNotifId = await scheduleLocalNotification(
-          `Are you okay, ${useSafelyStore.getState().userName}?`,
-          "You haven't made it home yet. Tap to check in.",
-          Math.floor(msUntilLate / 1000),
-          'LATE_CHECKIN'
-        );
-        if (lateNotifId) {
-          await AsyncStorage.setItem('safely_late_notif_id', lateNotifId);
+          try {
+            console.log('HomeScreen: Sending guardian email via Resend to', guardianEmail);
+            await fetch('https://api.resend.com/emails', {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${CONFIG.RESEND_KEY}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                from: 'Safely <onboarding@resend.dev>',
+                to: guardianEmail,
+                subject: `${firstName} has activated Safely \uD83D\uDEE1\uFE0F`,
+                html: `
+                  <div style="font-family:system-ui;max-width:480px;margin:0 auto;padding:32px;">
+                    <h2>${firstName} is heading home</h2>
+                    <p style="color:#8A8A8A;">Watch their live location:</p>
+                    <a href="${trackingUrl}"
+                       style="display:block;background:#00E87A;color:#0A0A0A;padding:16px 24px;border-radius:12px;text-decoration:none;font-weight:bold;text-align:center;margin:24px 0;">
+                      Track ${firstName} Live \u2192
+                    </a>
+                    <p style="color:#BBBBBB;font-size:12px;">Powered by Safely</p>
+                  </div>
+                `,
+              }),
+            });
+            console.log('HomeScreen: Guardian email sent');
+          } catch (emailErr) {
+            console.log('HomeScreen: Resend email error', emailErr);
+          }
+        } else {
+          console.log('HomeScreen: Guardian email missing — skipping email');
         }
-      } catch (e) {
-        console.log('HomeScreen: scheduleLocalNotification error', e);
       }
-
-      router.push('/tracking/active');
-
     } catch (err) {
-      console.error('Start safely error:', err);
-      Alert.alert('Error', 'Something went wrong. Please try again.');
+      console.error('HomeScreen: Supabase session error (continuing):', err);
     }
+
+    setActiveSessionId(sessionId);
+    setActiveTrackingToken(resolvedTrackingToken);
+    startSession(selectedEta, eventName);
+
+    try {
+      await persistActiveSession({
+        sessionId,
+        userName: useSafelyStore.getState().userName,
+        guardianEmail: primaryGuardian?.email ?? '',
+        guardianName: primaryGuardian?.name ?? '',
+        eta: etaDate.getTime(),
+        homeLatitude: homeAddress.coords!.latitude,
+        homeLongitude: homeAddress.coords!.longitude,
+        trackingStatus: 'active',
+      });
+    } catch (e) {
+      console.log('HomeScreen: persistActiveSession error', e);
+    }
+
+    try {
+      await startBackgroundTracking();
+    } catch (e) {
+      console.log('HomeScreen: startBackgroundTracking error', e);
+    }
+
+    try {
+      await registerHomeGeofence(
+        homeAddress.coords!.latitude,
+        homeAddress.coords!.longitude
+      );
+    } catch (e) {
+      console.log('HomeScreen: registerHomeGeofence error', e);
+    }
+
+    try {
+      const msUntilLate = etaDate.getTime() - Date.now() + (15 * 60 * 1000);
+      const lateNotifId = await scheduleLocalNotification(
+        `Are you okay, ${useSafelyStore.getState().userName}?`,
+        "You haven't made it home yet. Tap to check in.",
+        Math.floor(msUntilLate / 1000),
+        'LATE_CHECKIN'
+      );
+      if (lateNotifId) {
+        await AsyncStorage.setItem('safely_late_notif_id', lateNotifId);
+      }
+    } catch (e) {
+      console.log('HomeScreen: scheduleLocalNotification error', e);
+    }
+
+    console.log('HomeScreen: Navigating to /tracking/active');
+    router.push('/tracking/active');
   }, [selectedEta, connectedEvents, startSession, router, userId, setActiveSessionId, setActiveTrackingToken, primaryGuardian, homeAddress]);
 
   const mapRegion = currentCoords ? {
@@ -608,11 +610,6 @@ export default function HomeScreen() {
               { opacity: haloAnim, transform: [{ scale: haloScaleAnim }] },
             ]} />
             <Animated.View style={[styles.orbHaloInner, { opacity: haloAnim }]} />
-            <TouchableOpacity
-              onPress={handleStartSafely}
-              activeOpacity={0.85}
-              style={styles.orbTouchableOuter}
-            >
             <Animated.View style={[styles.orbWrapper, { transform: [{ scale: pulseAnim }] }]}>
               <TouchableOpacity
                 onPress={handleStartSafely}
@@ -649,7 +646,6 @@ export default function HomeScreen() {
                 </LinearGradient>
               </TouchableOpacity>
             </Animated.View>
-            </TouchableOpacity>
           </View>
         </View>
         <Text style={styles.bottomCaption}>Tap when you're heading home</Text>
