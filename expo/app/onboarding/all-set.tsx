@@ -244,7 +244,7 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   title: {
-    fontFamily: fonts.display,
+    fontWeight: '700' as const,
     fontSize: 32,
     color: '#FFFFFF',
     textAlign: 'center',

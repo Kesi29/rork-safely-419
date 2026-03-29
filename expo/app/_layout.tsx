@@ -67,7 +67,6 @@ export default function RootLayout() {
   const updateOnboardingProfile = useSafelyStore((s) => s.updateOnboardingProfile);
 
   const [fontsLoaded, fontError] = useFonts({
-    'PlayfairDisplay_700Italic': require('../assets/fonts/PlayfairDisplay-BoldItalic.ttf'),
     'DMSans_400Regular': require('../assets/fonts/DMSans-Regular.ttf'),
     'DMSans_500Medium': require('../assets/fonts/DMSans-Medium.ttf'),
     'DMSans_600SemiBold': require('../assets/fonts/DMSans-SemiBold.ttf'),

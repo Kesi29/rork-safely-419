@@ -12,7 +12,6 @@ import { AlertTriangle } from 'lucide-react-native';
 import Svg, { Circle } from 'react-native-svg';
 import * as Haptics from 'expo-haptics';
 import Colors from '@/constants/colors';
-import { fonts } from '@/constants/typography';
 import { useSafelyStore } from '@/store';
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
@@ -165,7 +164,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   title: {
-    fontFamily: fonts.display,
+    fontWeight: '700' as const,
     fontSize: 22,
     color: Colors.textPrimary,
     textAlign: 'center',

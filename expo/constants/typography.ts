@@ -1,7 +1,7 @@
 import Colors from './colors';
 
 export const fonts = {
-  display: 'PlayfairDisplay_700Italic' as const,
+  display: undefined as undefined,
   body: 'DMSans_400Regular' as const,
   bodyMedium: 'DMSans_500Medium' as const,
   bodySemiBold: 'DMSans_600SemiBold' as const,
@@ -12,6 +12,8 @@ export const type = {
   screenTitle: {
     fontFamily: fonts.display,
     fontSize: 24,
+    fontWeight: '700' as const,
+    fontStyle: 'italic' as const,
     color: Colors.textPrimary,
   },
   statNumber: {

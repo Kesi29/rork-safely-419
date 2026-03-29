@@ -11,7 +11,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ShieldCheck } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import Colors from '@/constants/colors';
-import { fonts } from '@/constants/typography';
 import { useSafelyStore } from '@/store';
 
 export default function ArrivedScreen() {
@@ -129,7 +128,7 @@ const styles = StyleSheet.create({
     fontWeight: '700' as const,
   },
   title: {
-    fontFamily: fonts.display,
+    fontWeight: '700' as const,
     fontSize: 32,
     color: '#0A0A0A',
     textAlign: 'center',

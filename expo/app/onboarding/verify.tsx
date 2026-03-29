@@ -159,7 +159,7 @@ const styles = StyleSheet.create({
     marginTop: 40,
   },
   title: {
-    fontFamily: fonts.display,
+    fontWeight: '700' as const,
     fontSize: 28,
     color: '#FFFFFF',
     textAlign: 'center',

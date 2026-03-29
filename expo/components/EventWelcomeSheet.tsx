@@ -11,7 +11,6 @@ import {
 import { Calendar } from 'lucide-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Colors from '@/constants/colors';
-import { fonts } from '@/constants/typography';
 import { ConnectedEvent } from '@/store/types';
 
 interface EventWelcomeSheetProps {
@@ -172,7 +171,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   title: {
-    fontFamily: fonts.display,
+    fontWeight: '700' as const,
     fontSize: 24,
     color: Colors.textPrimary,
     textAlign: 'center',

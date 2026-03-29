@@ -56,8 +56,8 @@ const styles = StyleSheet.create({
     padding: 32,
   },
   title: {
-    fontFamily: 'PlayfairDisplay_700Italic',
     fontSize: 24,
+    fontWeight: '700' as const,
     color: Colors.textPrimary,
     textAlign: 'center',
     marginBottom: 12,

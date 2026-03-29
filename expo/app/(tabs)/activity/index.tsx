@@ -3,7 +3,6 @@ import { View, Text, StyleSheet, FlatList } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Shield, CheckCircle } from 'lucide-react-native';
 import Colors from '@/constants/colors';
-import { fonts } from '@/constants/typography';
 import { useSafelyStore } from '@/store';
 import { SessionHistory } from '@/store/types';
 import Card from '@/components/Card';
@@ -69,7 +68,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   headerTitle: {
-    fontFamily: fonts.display,
+    fontWeight: '700' as const,
     fontSize: 28,
     color: Colors.textPrimary,
   },

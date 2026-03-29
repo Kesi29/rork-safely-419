@@ -105,7 +105,7 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
   },
   headerTitle: {
-    fontFamily: fonts.display,
+    fontWeight: '700' as const,
     fontSize: 20,
     color: Colors.textPrimary,
     flex: 1,
@@ -121,7 +121,7 @@ const styles = StyleSheet.create({
     marginTop: 16,
   },
   appName: {
-    fontFamily: fonts.display,
+    fontWeight: '700' as const,
     fontSize: 36,
     color: Colors.textPrimary,
     marginBottom: 4,

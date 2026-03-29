@@ -14,7 +14,6 @@ import { useRouter } from 'expo-router';
 import { MapPin, Play, Clock, AlertTriangle, Calendar, Edit2, Plus, FileText, Shield, AlertCircle, Code, ChevronRight, Info, Trash2 } from 'lucide-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Colors from '@/constants/colors';
-import { fonts } from '@/constants/typography';
 import { useSafelyStore } from '@/store';
 import Card from '@/components/Card';
 import Avatar from '@/components/Avatar';
@@ -450,7 +449,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   headerTitle: {
-    fontFamily: fonts.display,
+    fontWeight: '700' as const,
     fontSize: 28,
     color: Colors.textPrimary,
   },
@@ -771,7 +770,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   modalTitle: {
-    fontFamily: fonts.display,
+    fontWeight: '700' as const,
     fontSize: 22,
     color: Colors.textPrimary,
     marginBottom: 24,

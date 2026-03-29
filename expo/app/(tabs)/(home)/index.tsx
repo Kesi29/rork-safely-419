@@ -37,6 +37,14 @@ import * as Haptics from 'expo-haptics';
 
 
 
+const getGreeting = (): string => {
+  const hour = new Date().getHours();
+  if (hour < 12) return 'Good morning';
+  if (hour < 17) return 'Good afternoon';
+  if (hour < 21) return 'Good evening';
+  return 'Stay safe tonight';
+};
+
 const generateUUID = (): string =>
   'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
     const r = Math.random() * 16 | 0;
@@ -87,6 +95,7 @@ export default function HomeScreen() {
     startSession,
     setCurrentCoords,
     userId,
+    userName,
     setActiveSessionId,
     setActiveTrackingToken,
     showEventWelcome,
@@ -612,6 +621,10 @@ export default function HomeScreen() {
             </Card>
           </TouchableOpacity>
         )}
+
+        <Text style={styles.greetingText}>
+          {getGreeting()}, {userName.split(' ')[0]}
+        </Text>
       </SafeAreaView>
 
       <View style={styles.bottomOverlay} pointerEvents="box-none">
@@ -803,7 +816,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   headerTitle: {
-    fontFamily: fonts.display,
+    fontWeight: '700' as const,
     fontSize: 24,
     color: Colors.textPrimary,
   },
@@ -1155,5 +1168,17 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600' as const,
     color: '#C68000',
+  },
+  greetingText: {
+    fontSize: 14,
+    color: '#8A8A8A',
+    textAlign: 'center' as const,
+    marginTop: 8,
+    backgroundColor: 'rgba(255,255,255,0.85)',
+    paddingHorizontal: 14,
+    paddingVertical: 5,
+    borderRadius: 12,
+    alignSelf: 'center' as const,
+    overflow: 'hidden' as const,
   },
 });

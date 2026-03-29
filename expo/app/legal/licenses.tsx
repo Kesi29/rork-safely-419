@@ -3,7 +3,6 @@ import { ScrollView, Text, View, TouchableOpacity, StyleSheet, Linking } from 'r
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ChevronLeft, ExternalLink } from 'lucide-react-native';
-import { fonts } from '@/constants/typography';
 import Colors from '@/constants/colors';
 
 interface LicenseItem {
@@ -85,7 +84,7 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
   },
   headerTitle: {
-    fontFamily: fonts.display,
+    fontWeight: '700' as const,
     fontSize: 20,
     color: Colors.textPrimary,
     flex: 1,

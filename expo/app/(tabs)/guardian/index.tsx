@@ -17,7 +17,6 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Shield, Plus } from 'lucide-react-native';
 import Colors from '@/constants/colors';
-import { fonts } from '@/constants/typography';
 import { useSafelyStore } from '@/store';
 import { Guardian, Relationship } from '@/store/types';
 import Avatar from '@/components/Avatar';
@@ -306,7 +305,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   headerTitle: {
-    fontFamily: fonts.display,
+    fontWeight: '700' as const,
     fontSize: 28,
     color: Colors.textPrimary,
   },
@@ -438,7 +437,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   modalTitle: {
-    fontFamily: fonts.display,
+    fontWeight: '700' as const,
     fontSize: 22,
     color: Colors.textPrimary,
     marginBottom: 24,
