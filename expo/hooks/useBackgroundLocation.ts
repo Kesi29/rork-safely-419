@@ -29,6 +29,8 @@ if (Platform.OS !== 'web') {
             sessionId: session.sessionId,
             latitude: location.coords.latitude,
             longitude: location.coords.longitude,
+            speed: location.coords.speed ?? null,
+            heading: location.coords.heading ?? null,
           }),
         });
         console.log('Background location update sent');
@@ -94,14 +96,14 @@ export async function startBackgroundTracking(): Promise<void> {
     const isRegistered = await TaskManager.isTaskRegisteredAsync(LOCATION_TASK);
     if (!isRegistered) {
       await Location.startLocationUpdatesAsync(LOCATION_TASK, {
-        accuracy: Location.Accuracy.Balanced,
-        distanceInterval: 50,
-        timeInterval: 30000,
+        accuracy: Location.Accuracy.High,
+        distanceInterval: 10,
+        timeInterval: 15000,
         showsBackgroundLocationIndicator: true,
         foregroundService: {
-          notificationTitle: 'Safely is ON',
-          notificationBody: 'Tracking your journey home',
-          notificationColor: '#18A57D',
+          notificationTitle: 'Safely is tracking',
+          notificationBody: 'Your guardian can see your location',
+          notificationColor: '#00E87A',
         },
       });
       console.log('Background location tracking started');

@@ -22,7 +22,7 @@ import SOSButton from '@/components/SOSButton';
 import GuardianToast from '@/components/GuardianToast';
 import { CONFIG } from '@/lib/config';
 import { supabase } from '@/lib/supabase';
-import { stopAllTracking, clearActiveSession } from '@/hooks/useBackgroundLocation';
+import { stopAllTracking, clearActiveSession, startBackgroundTracking, requestLocationPermissions } from '@/hooks/useBackgroundLocation';
 import { cancelNotification } from '@/hooks/useNotifications';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Haptics from 'expo-haptics';
@@ -142,6 +142,14 @@ export default function ActiveTrackingScreen() {
         setInitialCoords(initCoords);
         setHasGpsLock(true);
         console.log('ActiveTracking: GPS lock acquired');
+
+        const bgGranted = await requestLocationPermissions();
+        if (bgGranted) {
+          await startBackgroundTracking();
+          console.log('ActiveTracking: Background location tracking started');
+        } else {
+          console.log('ActiveTracking: Background location permission not granted, foreground only');
+        }
 
         const sid = useSafelyStore.getState().activeSessionId;
         if (sid) {
