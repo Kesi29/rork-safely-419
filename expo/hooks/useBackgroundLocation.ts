@@ -2,6 +2,7 @@ import { Platform } from 'react-native';
 import * as Location from 'expo-location';
 import * as TaskManager from 'expo-task-manager';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { queueLocation } from '@/lib/locationQueue';
 
 const LOCATION_TASK = 'safely-background-location';
 const GEOFENCE_TASK = 'safely-geofence';
@@ -21,21 +22,29 @@ if (Platform.OS !== 'web') {
       if (!raw) return;
       const session = JSON.parse(raw);
 
+      const locationData = {
+        sessionId: session.sessionId,
+        latitude: location.coords.latitude,
+        longitude: location.coords.longitude,
+        speed: location.coords.speed ?? null,
+        heading: location.coords.heading ?? null,
+        timestamp: new Date().toISOString(),
+      };
+
       try {
-        await fetch('https://safely-backend.vercel.app/api/sessions/location', {
+        const res = await fetch('https://safely-backend.vercel.app/api/sessions/location', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            sessionId: session.sessionId,
-            latitude: location.coords.latitude,
-            longitude: location.coords.longitude,
-            speed: location.coords.speed ?? null,
-            heading: location.coords.heading ?? null,
-          }),
+          body: JSON.stringify(locationData),
         });
-        console.log('Background location update sent');
-      } catch (e) {
-        console.log('Background location update failed silently:', e);
+        if (res.ok) {
+          console.log('Background location update sent');
+        } else {
+          throw new Error('Post failed');
+        }
+      } catch {
+        console.log('Background location: Offline, queuing');
+        void queueLocation(locationData);
       }
     });
 

@@ -26,6 +26,7 @@ import { stopAllTracking, clearActiveSession, startBackgroundTracking, requestLo
 import { cancelNotification } from '@/hooks/useNotifications';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Haptics from 'expo-haptics';
+import { queueLocation, flushLocationQueue } from '@/lib/locationQueue';
 
 function haversineDistance(a: {latitude: number; longitude: number}, b: {latitude: number; longitude: number}): number {
   const R = 6371000;
@@ -68,6 +69,7 @@ export default function ActiveTrackingScreen() {
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
   const [hasGpsLock, setHasGpsLock] = useState(false);
+  const [isOffline, setIsOffline] = useState(false);
   const [initialCoords, setInitialCoords] = useState<{latitude: number; longitude: number} | null>(null);
   const trackingStartTime = useRef(Date.now()).current;
   const hasNavigatedAway = useRef(false);
@@ -80,6 +82,16 @@ export default function ActiveTrackingScreen() {
 
   const dotOpacity = useRef(new Animated.Value(1)).current;
   const mapRef = useRef<any>(null);
+
+  useEffect(() => {
+    void flushLocationQueue();
+
+    const flushInterval = setInterval(() => {
+      void flushLocationQueue();
+    }, 30000);
+
+    return () => clearInterval(flushInterval);
+  }, []);
 
   useEffect(() => {
     Animated.loop(
@@ -153,19 +165,32 @@ export default function ActiveTrackingScreen() {
 
         const sid = useSafelyStore.getState().activeSessionId;
         if (sid) {
-          fetch(`${CONFIG.BACKEND_URL}/sessions/location`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              sessionId: sid,
-              latitude: loc.coords.latitude,
-              longitude: loc.coords.longitude,
-              speed: loc.coords.speed ?? null,
-              heading: loc.coords.heading ?? null,
-            }),
-          }).then(r => r.json())
-            .then(d => console.log('ActiveTracking: Initial location posted', d))
-            .catch(e => console.log('ActiveTracking: Initial location post error', e));
+          const locationData = {
+            sessionId: sid,
+            latitude: loc.coords.latitude,
+            longitude: loc.coords.longitude,
+            speed: loc.coords.speed ?? null,
+            heading: loc.coords.heading ?? null,
+            timestamp: new Date().toISOString(),
+          };
+          try {
+            const res = await fetch(`${CONFIG.BACKEND_URL}/sessions/location`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(locationData),
+            });
+            if (res.ok) {
+              console.log('ActiveTracking: Initial location posted');
+              setIsOffline(false);
+              void flushLocationQueue();
+            } else {
+              throw new Error('Post failed');
+            }
+          } catch {
+            console.log('ActiveTracking: Offline, queuing initial location');
+            setIsOffline(true);
+            void queueLocation(locationData);
+          }
         }
 
         sub = await Location.watchPositionAsync(
@@ -174,7 +199,7 @@ export default function ActiveTrackingScreen() {
             distanceInterval: 20,
             timeInterval: 5000,
           },
-          (location) => {
+          async (location) => {
             console.log('ActiveTracking: Location update', location.coords.latitude, location.coords.longitude);
             const newCoords = {
               latitude: location.coords.latitude,
@@ -184,19 +209,32 @@ export default function ActiveTrackingScreen() {
 
             const sid = useSafelyStore.getState().activeSessionId;
             if (sid) {
-              fetch(`${CONFIG.BACKEND_URL}/sessions/location`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  sessionId: sid,
-                  latitude: location.coords.latitude,
-                  longitude: location.coords.longitude,
-                  speed: location.coords.speed ?? null,
-                  heading: location.coords.heading ?? null,
-                }),
-              }).then(r => r.json())
-                .then(d => console.log('ActiveTracking: Location posted', d))
-                .catch(e => console.log('ActiveTracking: Location post error', e));
+              const locationData = {
+                sessionId: sid,
+                latitude: location.coords.latitude,
+                longitude: location.coords.longitude,
+                speed: location.coords.speed ?? null,
+                heading: location.coords.heading ?? null,
+                timestamp: new Date().toISOString(),
+              };
+              try {
+                const res = await fetch(`${CONFIG.BACKEND_URL}/sessions/location`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify(locationData),
+                });
+                if (res.ok) {
+                  console.log('ActiveTracking: Location posted');
+                  setIsOffline(false);
+                  void flushLocationQueue();
+                } else {
+                  throw new Error('Post failed');
+                }
+              } catch {
+                console.log('ActiveTracking: Offline, queuing location');
+                setIsOffline(true);
+                void queueLocation(locationData);
+              }
             }
           }
         );
@@ -581,6 +619,13 @@ export default function ActiveTrackingScreen() {
           </Card>
         </View>
       </SafeAreaView>
+
+      {isOffline && (
+        <View style={styles.offlineBanner}>
+          <View style={styles.offlineDot} />
+          <Text style={styles.offlineText}>No signal — locations saved locally</Text>
+        </View>
+      )}
 
       <SOSButton onPress={handleSOS} />
 
@@ -1027,5 +1072,29 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600' as const,
     color: Colors.textSecondary,
+  },
+  offlineBanner: {
+    backgroundColor: '#FFB020',
+    paddingVertical: 6,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    position: 'absolute',
+    top: 50,
+    alignSelf: 'center',
+    zIndex: 100,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  offlineDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#854F0B',
+  },
+  offlineText: {
+    fontSize: 12,
+    fontWeight: '600' as const,
+    color: '#854F0B',
   },
 });
